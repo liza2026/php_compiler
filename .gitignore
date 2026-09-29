@@ -1,0 +1,42 @@
+# --- Специфичное для CLion / JetBrains ---
+.idea/
+cmake-build-*/
+*.iws
+*.iml
+*.ipr
+out/
+
+# --- Артефакты сборки CMake ---
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+build/
+cmake-build-*/
+
+# --- Скомпилированные объектные файлы и бинарники ---
+# Игнорируем все объектные файлы
+*.o
+*.obj
+*.lo
+*.slo
+*.gch
+*.pch
+
+# Игнорируем скомпилированные исполняемые файлы (обычно без расширения)
+main
+main.exe
+a.out
+*.exe
+
+# --- Файлы, генерируемые Flex/Bison ---
+lex.yy.c
+lex.yy.cc
+lex.yy.h
+*.tab.c
+*.tab.h
+
+# --- Разное ---
+.DS_Store
+Thumbs.db
+*.log
