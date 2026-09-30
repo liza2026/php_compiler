@@ -7,9 +7,16 @@
     #include <cstdlib>
     #include <cstdio>
     #include <cctype>
+    #include <vector>
+    #include <utility>
 
     #include "core/helpers/Console.h"
     #include "core/helpers/Buffer.h"
+
+    /* Выполняется перед каждым правилом: запоминаем последний непробельный символ
+       текущего токена (lastChar) и предыдущего (prevChar) */
+    #define YY_USER_ACTION \
+        if (yyleng > 0 && !isspace((unsigned char)yytext[yyleng - 1])) { prevChar = lastChar; lastChar = yytext[yyleng - 1]; }
 %}
 
  /* Стартовые условия */
@@ -56,6 +63,13 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
     static Buffer buffer;
     static bool stringHadInterpolation = false; /* была ли уже интерполяция в текущей строке (чтобы не логировать фиктивный пустой "хвост") */
     static int stringStartLine = -1;      /* строка, на которой НАЧАЛАСЬ текущая строка целиком - отдельно от buffer.getStartLine(), которая сбрасывается после каждого фрагмента интерполяции и для сообщения об ошибке "Unterminated" не годится */
+    /* Вложенная строка внутри {$arr["key"]} перезаписывает две переменные выше,
+       поэтому при открытии строки старые значения кладём сюда, а при закрытии возвращаем. */
+    static std::vector<std::pair<int, bool>> savedStrings;
+    /* Сколько "{" открыто внутри текущей {$...} (чтобы "}" не закрыла её раньше времени) */
+    static std::vector<int> exprDepth;
+    /* Нужны, чтобы понять, что перед кавычкой внутри {$...} стоит законченный операнд */
+    static char prevChar = 0, lastChar = 0;
 
     /* %.14g даёт компактную запись*/
     auto formatDouble = [](double value) {
@@ -300,14 +314,21 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
 
 <PHP,EXPR>"(" { Console::Log("LParen: ("); }
 <PHP,EXPR>")" { Console::Log("RParen: )"); }
-<PHP,EXPR>"{" { Console::Log("LBrace: {"); }
+<PHP,EXPR>"{" {
+    if (YY_START == EXPR) exprDepth.back()++;
+    Console::Log("LBrace: {");
+}
 <PHP,EXPR>"}" {
     /* Если мы внутри сложной интерполяции {$...} - эта "}"
        закрывает её и возвращает нас в породившую строку.
        Если мы в обычном PHP-коде - это просто закрывающая
        фигурная скобка блока */
-    if (YY_START == EXPR) {
+    if (YY_START == EXPR && exprDepth.back() > 0) {
+        exprDepth.back()--;
+        Console::Log("RBrace: }");
+    } else if (YY_START == EXPR) {
         Console::Log("InterpolationEnd: }");
+        exprDepth.pop_back();
         yy_pop_state();
     } else {
         Console::Log("RBrace: }");
@@ -397,11 +418,22 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
  /* Строки в двойных кавычках */
 
 <PHP,EXPR>\" {
-    buffer.reset();
-    buffer.setStartLine(yylineno);
-    stringStartLine = yylineno;
-    stringHadInterpolation = false;
-    yy_push_state(STRING_D);
+    /* Сообщить об ошибке, выйти из {$...} и
+       отдать эту же кавычку (yyless(0)) внешней строке, чтобы она закрылась. */
+    if (YY_START == EXPR && exprDepth.back() == 0 &&
+        (isalnum((unsigned char)prevChar) || prevChar == '_' || prevChar == ']' || prevChar == ')')) {
+        Console::Error("Unterminated {$...} interpolation: missing '}' before closing quote at line " + std::to_string(yylineno));
+        exprDepth.pop_back();
+        yy_pop_state();
+        yyless(0);
+    } else {
+        buffer.reset();
+        buffer.setStartLine(yylineno);
+        savedStrings.push_back({stringStartLine, stringHadInterpolation});
+        stringStartLine = yylineno;
+        stringHadInterpolation = false;
+        yy_push_state(STRING_D);
+    }
 }
 
 <STRING_D>\\n  { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append("\n"); }
@@ -462,6 +494,7 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
     }
     Console::Log("InterpolationStart (dollar-curly): ${");
     stringHadInterpolation = true;
+    exprDepth.push_back(0);
     yy_push_state(EXPR);
 }
 
@@ -485,6 +518,7 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
     }
     Console::Log("InterpolationStart: {");
     stringHadInterpolation = true;
+    exprDepth.push_back(0);
     yy_push_state(EXPR);
 }
 
@@ -514,6 +548,9 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
         Console::Log(label + ", line " + std::to_string(stringStartLine) + "): \"" + buffer.current() + "\"");
     }
     buffer.reset();
+    stringStartLine = savedStrings.back().first;
+    stringHadInterpolation = savedStrings.back().second;
+    savedStrings.pop_back();
     yy_pop_state();
 }
 
