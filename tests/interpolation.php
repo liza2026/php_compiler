@@ -92,3 +92,7 @@ echo 'single $name';               // НЕ интерполируется
 echo 'single {$name}';             // НЕ интерполируется
 echo "double $name";               // интерполируется
 echo "double {$name}";             // интерполируется
+
+echo "Closure: {$fn(function() { return 1; })}";
+
+echo "{$arr["{$arr["key"]}"]}";
