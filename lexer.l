@@ -109,7 +109,7 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
 
  /* Режим INITIAL */
 
-"<?php" {
+(?i:"<?php") {
     if (!buffer.current().empty()) {
         Console::Log("HTML text (line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
     }
