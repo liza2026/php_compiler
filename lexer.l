@@ -28,6 +28,7 @@
 %x LINE_COMMENT
  /* EXPR - сложная интерполяция {$...} внутри строки */
 %x EXPR
+%x MEMBER
 
  /* Именованные шаблоны */
 
@@ -294,7 +295,7 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
 <PHP,EXPR>"**=" { Console::Log("Operator: **="); }
 <PHP,EXPR>"<=>" { Console::Log("Operator: <=>"); }
 <PHP,EXPR>"??=" { Console::Log("Operator: ?" "?="); }
-<PHP,EXPR>"?->" { Console::Log("Operator: ?" "->"); }
+<PHP,EXPR>"?->" { Console::Log("Operator: ?" "->"); yy_push_state(MEMBER); }
 <PHP,EXPR>"===" { Console::Log("Operator: ==="); }
 <PHP,EXPR>"!==" { Console::Log("Operator: !=="); }
 <PHP,EXPR>"=="  { Console::Log("Operator: =="); }
@@ -306,7 +307,7 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
 <PHP,EXPR>"||"  { Console::Log("Operator: ||"); }
 <PHP,EXPR>"??"  { Console::Log("Operator: ??"); }
 <PHP,EXPR>"?:"  { Console::Log("Operator: ?:"); }
-<PHP,EXPR>"->"  { Console::Log("Operator: ->"); }
+<PHP,EXPR>"->"  { Console::Log("Operator: ->"); yy_push_state(MEMBER); }
 <PHP,EXPR>"=>"  { Console::Log("Operator: =>"); }
 <PHP,EXPR>"::"  { Console::Log("Operator: ::"); }
 <PHP,EXPR>"++"  { Console::Log("Operator: ++"); }
@@ -616,6 +617,10 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
     длинного варианта не нашлось) токен-сепаратор. */
 <PHP,EXPR>"\\" { Console::Log("NamespaceSeparator: \\"); }
 
+ /* после ?-> и -> идут идентификаторы (даже ключевые слова) */
+<MEMBER>{NAME_SEG}       { Console::Log("Identifier: " + std::string(yytext)); yy_pop_state(); }
+<MEMBER>[ \t\r\n\v\f]+   { /* пробелы между -> и именем допустимы */ }
+<MEMBER>.                { yyless(0); yy_pop_state(); }   /* дальше не имя: $o->$name, $o->{...} */
 
  /* Пробелы и ошибочные символы */
 
