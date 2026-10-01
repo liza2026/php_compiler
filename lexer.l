@@ -25,6 +25,7 @@
 %x STRING_S
 %x STRING_D
 %x COMMENT
+%x LINE_COMMENT
  /* EXPR - сложная интерполяция {$...} внутри строки */
 %x EXPR
 
@@ -154,10 +155,27 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
 
  /* Комментарии (многострочные, однострочные "//" и "#") */
 
-<PHP,EXPR>"//"[^\n]* { Console::Log("Comment (line-style): " + std::string(yytext)); }
 <PHP,EXPR>"#["        { Console::Log("AttributeOpen: #["); }
-<PHP,EXPR>"#"[^[\n][^\n]* { Console::Log("Comment (line-style): " + std::string(yytext)); }
-<PHP,EXPR>"#"        { Console::Log("Comment (line-style): #"); }
+
+<PHP,EXPR>"//"|"#" {
+    buffer.reset();
+    buffer.append(yytext);
+    yy_push_state(LINE_COMMENT);
+}
+
+<LINE_COMMENT>[^\n?]+  { buffer.append(yytext); }
+<LINE_COMMENT>"?"       { buffer.append(yytext); }
+
+<LINE_COMMENT>"?>"|\n {
+    yyless(0);   /* "?>" или перевод строки не часть комментария - возвращаем во вход */
+    Console::Log("Comment (line-style): " + buffer.current());
+    yy_pop_state();
+}
+
+<LINE_COMMENT><<EOF>> {
+    Console::Log("Comment (line-style): " + buffer.current());
+    yy_pop_state();
+}
 
 <PHP>"/*" {
     buffer.reset();
