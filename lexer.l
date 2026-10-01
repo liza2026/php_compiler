@@ -84,6 +84,26 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
         for (char c : text) if (c != '_') result += c;
         return result;
     };
+
+    /* Превращает цифры целого числа в текст для лога.
+       digits - только цифры, без префикса (0x, 0b, 0o) и без "_"
+       base   - система счисления: 10, 16, 8 или 2
+       label  - подпись, например "Integer: " */
+    auto integerText = [](const std::string& digits, int base, const std::string& label) {
+        errno = 0;                                                      // сбрасываем флаг ошибки
+        long long value = std::strtoll(digits.c_str(), nullptr, base);  // пробуем прочитать как целое
+        if (errno != ERANGE) {                                          // влезло - всё хорошо
+            return label + std::to_string(value);
+        }
+        double result = 0;                                              // не влезло - считаем как дробное
+        for (char c : digits) {
+            int digit = isdigit((unsigned char)c) ? c - '0' : tolower((unsigned char)c) - 'a' + 10;
+            result = result * base + digit;                             // как читаем число слева направо
+        }
+        char text[64];
+        std::snprintf(text, sizeof(text), "%.14g", result);
+        return std::string("Float: ") + text;
+    };
 %}
 
  /* Режим INITIAL */
@@ -349,31 +369,19 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
 }
 
 <PHP,EXPR>{INT_HEX} {
-    long value = std::strtol(stripUnderscores(yytext).c_str(), nullptr, 16);
-    Console::Log("Integer (hex): " + std::to_string(value));
+    Console::Log(integerText(stripUnderscores(yytext).substr(2), 16, "Integer (hex): "));
 }
-
 <PHP,EXPR>{INT_BIN} {
-    std::string clean = stripUnderscores(yytext);
-    long value = std::strtol(clean.c_str() + 2, nullptr, 2); /* +2 - пропускаем "0b" */
-    Console::Log("Integer (binary): " + std::to_string(value));
+    Console::Log(integerText(stripUnderscores(yytext).substr(2), 2, "Integer (binary): "));
 }
-
 <PHP,EXPR>{INT_OCT_NEW} {
-    std::string clean = stripUnderscores(yytext);
-    long value = std::strtol(clean.c_str() + 2, nullptr, 8); /* +2 - пропускаем "0o" */
-    Console::Log("Integer (octal): " + std::to_string(value));
+    Console::Log(integerText(stripUnderscores(yytext).substr(2), 8, "Integer (octal): "));
 }
-
 <PHP,EXPR>{INT_OCT_OLD} {
-    std::string clean = stripUnderscores(yytext);
-    long value = std::strtol(clean.c_str() + 1, nullptr, 8);
-    Console::Log("Integer (octal): " + std::to_string(value));
+    Console::Log(integerText(stripUnderscores(yytext).substr(1), 8, "Integer (octal): "));
 }
-
 <PHP,EXPR>{INTEGER} {
-    long value = std::strtol(stripUnderscores(yytext).c_str(), nullptr, 10);
-    Console::Log("Integer: " + std::to_string(value));
+    Console::Log(integerText(stripUnderscores(yytext), 10, "Integer: "));
 }
 
  /* Число с мусорным хвостом: 123abc, 0x1Ag, 0b1010xyz, 1.5ex, 5.f00,
