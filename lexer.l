@@ -87,24 +87,19 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
         return result;
     };
 
-    /* Превращает цифры целого числа в текст для лога.
-       digits - только цифры, без префикса (0x, 0b, 0o) и без "_"
-       base   - система счисления: 10, 16, 8 или 2
-       label  - подпись, например "Integer: " */
-    auto integerText = [](const std::string& digits, int base, const std::string& label) {
+    auto isBigInteger = [](const std::string& digits, int base) {
         errno = 0;                                                      // сбрасываем флаг ошибки
-        long long value = std::strtoll(digits.c_str(), nullptr, base);  // пробуем прочитать как целое
-        if (errno != ERANGE) {                                          // влезло - всё хорошо
-            return label + std::to_string(value);
-        }
+        std::strtoll(digits.c_str(), nullptr, base);  // пробуем прочитать как целое
+        return errno == ERANGE;
+    };
+
+    auto calcBigInteger = [](const std::string& digits, int base) {
         double result = 0;                                              // не влезло - считаем как дробное
         for (char c : digits) {
             int digit = isdigit((unsigned char)c) ? c - '0' : tolower((unsigned char)c) - 'a' + 10;
             result = result * base + digit;                             // как читаем число слева направо
         }
-        char text[64];
-        std::snprintf(text, sizeof(text), "%.14g", result);
-        return std::string("Float: ") + text;
+        return result;
     };
 %}
 
@@ -388,19 +383,59 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
 }
 
 <PHP,EXPR>{INT_HEX} {
-    Console::Log(integerText(stripUnderscores(yytext).substr(2), 16, "Integer (hex): "));
+    std::string int_str = stripUnderscores(yytext).substr(2);
+    if (isBigInteger(int_str, 16)) {
+        double value = calcBigInteger(int_str, 16);
+        Console::Log("Float: " + formatDouble(value));
+    }
+    else {
+        long long value = std::strtoll(int_str.c_str(), nullptr, 16);
+        Console::Log("Integer (hex): " + std::to_string(value));
+    }
 }
 <PHP,EXPR>{INT_BIN} {
-    Console::Log(integerText(stripUnderscores(yytext).substr(2), 2, "Integer (binary): "));
+    std::string int_str = stripUnderscores(yytext).substr(2);
+    if (isBigInteger(int_str, 2)) {
+        double value = calcBigInteger(int_str, 2);
+        Console::Log("Float: " + formatDouble(value));
+    }
+    else {
+        long long value = std::strtoll(int_str.c_str(), nullptr, 2);
+        Console::Log("Integer (binary): " + std::to_string(value));
+    }
 }
 <PHP,EXPR>{INT_OCT_NEW} {
-    Console::Log(integerText(stripUnderscores(yytext).substr(2), 8, "Integer (octal): "));
+    std::string int_str = stripUnderscores(yytext).substr(2);
+    if (isBigInteger(int_str, 8)) {
+        double value = calcBigInteger(int_str, 8);
+        Console::Log("Float: " + formatDouble(value));
+    }
+    else {
+        long long value = std::strtoll(int_str.c_str(), nullptr, 8);
+        Console::Log("Integer (octal): " + std::to_string(value));
+    }
 }
 <PHP,EXPR>{INT_OCT_OLD} {
-    Console::Log(integerText(stripUnderscores(yytext).substr(1), 8, "Integer (octal): "));
+    std::string int_str = stripUnderscores(yytext).substr(1);
+    if (isBigInteger(int_str, 8)) {
+        double value = calcBigInteger(int_str, 8);
+        Console::Log("Float: " + formatDouble(value));
+    }
+    else {
+        long long value = std::strtoll(int_str.c_str(), nullptr, 8);
+        Console::Log("Integer (octal): " + std::to_string(value));
+    }
 }
 <PHP,EXPR>{INTEGER} {
-    Console::Log(integerText(stripUnderscores(yytext), 10, "Integer: "));
+    std::string int_str = stripUnderscores(yytext);
+    if (isBigInteger(int_str, 10)) {
+        double value = calcBigInteger(int_str, 10);
+        Console::Log("Float: " + formatDouble(value));
+    }
+    else {
+        long long value = std::strtoll(int_str.c_str(), nullptr, 10);
+        Console::Log("Integer: " + std::to_string(value));
+    }
 }
 
  /* Число с мусорным хвостом: 123abc, 0x1Ag, 0b1010xyz, 1.5ex, 5.f00,
