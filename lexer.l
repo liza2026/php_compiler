@@ -4,30 +4,88 @@
 %option stack
 %{
     #include <string>
+    #include <vector>
     #include <cstdlib>
     #include <cstdio>
+    #include <cerrno>
     #include <cctype>
-    #include <vector>
-    #include <utility>
 
     #include "core/helpers/Console.h"
     #include "core/helpers/Buffer.h"
 
-    /* Выполняется перед каждым правилом: запоминаем последний непробельный символ
-       текущего токена (lastChar) и предыдущего (prevChar) */
-    #define YY_USER_ACTION \
-        if (yyleng > 0 && !isspace((unsigned char)yytext[yyleng - 1])) { prevChar = lastChar; lastChar = yytext[yyleng - 1]; }
+    enum TokenType {
+        T_HTML, T_OPEN_TAG, T_OPEN_TAG_ECHO, T_CLOSE_TAG,
+        T_COMMENT_LINE, T_COMMENT_BLOCK, T_ATTRIBUTE_OPEN,
+        T_KEYWORD, T_BOOLEAN, T_NULL, T_MAGIC_CONSTANT, T_TYPE, T_IDENTIFIER, T_VARIABLE,
+        T_OPERATOR, T_CAST, T_DOLLAR, T_NS_SEPARATOR,
+        T_LPAREN, T_RPAREN, T_LBRACE, T_RBRACE, T_LBRACKET, T_RBRACKET, T_COMMA, T_SEMICOLON, T_COLON,
+        T_INTEGER, T_INTEGER_HEX, T_INTEGER_BIN, T_INTEGER_OCT, T_FLOAT,
+        T_STRING_SINGLE, T_STRING_DOUBLE, T_STRING_FRAGMENT,
+        T_INTERP_VARIABLE, T_INTERP_ARRAY, T_INTERP_PROPERTY, T_INTERP_DEPRECATED,
+        T_INTERP_START, T_INTERP_START_DOLLAR, T_INTERP_END,
+        T_ERROR
+    };
+
+    struct Token {
+        TokenType   type;
+        std::string value;   /* текст лексемы или её значение (число, строка без кавычек) */
+        int         line;
+    };
+
+    /* Названия в том же порядке, что и в enum. "@" - место для номера строки. */
+    static const char* const TOKEN_NAMES[] = {
+        "HTML text (line @)", "OpenTag", "OpenTagEcho", "CloseTag",
+        "Comment (line-style, line @)", "Comment (block, line @)", "AttributeOpen",
+        "Keyword", "Boolean", "Null", "MagicConstant", "Type", "Identifier", "Variable",
+        "Operator", "Operator (cast)", "Dollar", "NamespaceSeparator",
+        "LParen", "RParen", "LBrace", "RBrace", "LBracket", "RBracket", "Comma", "Semicolon", "Colon",
+        "Integer", "Integer (hex)", "Integer (binary)", "Integer (octal)", "Float",
+        "String (single, line @)", "String (double, line @)", "String fragment (double, line @)",
+        "Interpolated variable", "Interpolated variable (array access)",
+        "Interpolated variable (property access)", "Interpolated variable (deprecated syntax)",
+        "InterpolationStart", "InterpolationStart (dollar-curly)", "InterpolationEnd",
+        "Error"
+    };
+
+    /* Токен -> строка для лога */
+    static std::string describe(const Token& token)
+    {
+        std::string head = TOKEN_NAMES[token.type];
+        std::string text = token.value;
+
+        size_t at = head.find('@');
+        if (at != std::string::npos) {          /* HTML, блочный комментарий, строки - с номером строки и в кавычках */
+            head.replace(at, 1, std::to_string(token.line));
+            char quote = (token.type == T_STRING_SINGLE) ? '\'' : '"';
+            text = quote + text + quote;
+        }
+        return head + ": " + text;
+    }
+
+    /* Одна открытая строка в двойных кавычках. Строки бывают вложенными:
+       "{$a["key"]}" - внутри вставки открывается ещё одна строка. */
+    struct StringFrame {
+        int  startLine;
+        bool hasInterpolation;   /* были ли вставки ($x, {$x}, ...) */
+        int  braceDepth;         /* сколько "{" открыто внутри текущей вставки {$ ... } */
+        int  exprLine;           /* строка, на которой началась текущая вставка {$ ... } */
+    };
 %}
 
- /* Стартовые условия */
+ /* Стартовые условия
+    INITIAL      - вне PHP-кода (HTML)
+    PHP          - PHP-код; им же разбирается содержимое вставки {$ ... } в строке
+    STRING_S     - '...'
+    STRING_D     - "..."
+    COMMENT      - многострочный комментарий
+    LINE_COMMENT - комментарий до конца строки (// или #)
+    MEMBER       - имя после -> и ?-> (там допустимо любое слово, даже ключевое) */
 
 %x PHP
 %x STRING_S
 %x STRING_D
 %x COMMENT
 %x LINE_COMMENT
- /* EXPR - сложная интерполяция {$...} внутри строки */
-%x EXPR
 %x MEMBER
 
  /* Именованные шаблоны */
@@ -49,10 +107,28 @@ VARIABLE     \$[A-Za-z_][A-Za-z0-9_]*
  /* число с мусорным хвостом */
 NUMBER_ANY   {FLOAT}|{INT_HEX}|{INT_BIN}|{INT_OCT_NEW}|{INT_OCT_OLD}|{INTEGER}
 
+ /* Ключевые слова (без учёта регистра), сгруппированы по смыслу */
+KW_CONTROL   if|elseif|else|endif|while|endwhile|do|foreach|endforeach|for|endfor|switch|endswitch|match|case|default|break|continue|return|goto|declare|enddeclare|try|catch|finally|throw|exit|die|yield[ \t\r\n]+from|yield
+KW_DECL      function|fn|class|interface|trait|enum|extends|implements|insteadof|namespace|use|const|var|global|public|private|protected|static|abstract|final|readonly
+KW_EXPR      as|new|clone|instanceof|echo|print|array|list|isset|unset|empty|and|or|xor
+KW_INCLUDE   include_once|include|require_once|require
+KEYWORD      (?i:{KW_CONTROL}|{KW_DECL}|{KW_EXPR}|{KW_INCLUDE})
+
+BOOLEAN      (?i:true|false)
+NULL_LITERAL (?i:null)
+MAGIC_CONST  __(LINE|FILE|DIR|FUNCTION|CLASS|METHOD|NAMESPACE|TRAIT)__
+
+TYPE_NAME    (?i:int|integer|float|double|string|bool|boolean|object|void|mixed|never|iterable|callable|self|parent)
+
+ /* приведение типов: (int) (string) ... */
 CAST_TYPE    (?i:int|integer|bool|boolean|float|double|real|string|binary|array|object|unset)
+CAST         "("[ \t]*{CAST_TYPE}[ \t]*")"
+
+ /* все операции, кроме -> и ?-> (после них нужно состояние MEMBER) */
+OPERATOR     "..."|"**="|"<=>"|"??="|"==="|"!=="|"=="|"!="|"<>"|"<="|">="|"&&"|"||"|"??"|"?:"|"=>"|"::"|"++"|"--"|"**"|"+="|"-="|"*="|"/="|".="|"%="|"&="|"|="|"^="|"<<="|">>="|"<<"|">>"|"+"|"-"|"*"|"/"|"%"|"."|"="|"<"|">"|"!"|"?"|"&"|"|"|"^"|"~"|"@"
 
  /* Простая интерполяция внутри "...":
-    $var, $var[ключ], $var[индекс], $var[$переменная], $var->свойство */
+    $var, $var[ключ], $var[индекс], $var[$переменная], $var->свойство, ${var} */
 SIMPLE_VAR   \$[A-Za-z_][A-Za-z0-9_]*
 SIMPLE_IDX   {SIMPLE_VAR}\[[A-Za-z_][A-Za-z0-9_]*\]|{SIMPLE_VAR}\[-?[0-9]+\]|{SIMPLE_VAR}\[{SIMPLE_VAR}\]
 SIMPLE_PROP  {SIMPLE_VAR}"->"[A-Za-z_][A-Za-z0-9_]*
@@ -62,18 +138,69 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
 %%
 
 %{
-    static Buffer buffer;
-    static bool stringHadInterpolation = false; /* была ли уже интерполяция в текущей строке (чтобы не логировать фиктивный пустой "хвост") */
-    static int stringStartLine = -1;      /* строка, на которой НАЧАЛАСЬ текущая строка целиком - отдельно от buffer.getStartLine(), которая сбрасывается после каждого фрагмента интерполяции и для сообщения об ошибке "Unterminated" не годится */
-    /* Вложенная строка внутри {$arr["key"]} перезаписывает две переменные выше,
-       поэтому при открытии строки старые значения кладём сюда, а при закрытии возвращаем. */
-    static std::vector<std::pair<int, bool>> savedStrings;
-    /* Сколько "{" открыто внутри текущей {$...} (чтобы "}" не закрыла её раньше времени) */
-    static std::vector<int> exprDepth;
-    /* Нужны, чтобы понять, что перед кавычкой внутри {$...} стоит законченный операнд */
-    static char prevChar = 0, lastChar = 0;
+    Buffer buffer;                       /* текст HTML / комментария / куска строки */
+    buffer.setStartLine(1);
+    std::vector<StringFrame> strings;    /* открытые "..." (внутренняя - последняя) */
+    TokenType lastType = T_ERROR;        /* тип последнего токена */
 
-    /* %.14g даёт компактную запись*/
+    /* Единственное место, где токен попадает в лог */
+    auto emit = [&](TokenType type, const std::string& value, int line = -1) {
+        Token token = { type, value, line < 0 ? yylineno : line };
+        lastType = type;
+        if (type == T_ERROR) Console::Error(token.value);
+        else                 Console::Log(describe(token));
+    };
+
+    /* Все сообщения об ошибках имеют вид "<что случилось> at line N" */
+    auto error = [&](const std::string& message, int line) {
+        emit(T_ERROR, message + " at line " + std::to_string(line));
+    };
+
+    /* Начать копить новый кусок текста, начинающийся на строке line */
+    auto startText = [&](int line) {
+        buffer.reset();
+        buffer.setStartLine(line);
+    };
+
+    /* Если в буфере что-то накопилось - выдать это токеном и очистить буфер */
+    auto flushText = [&](TokenType type) {
+        if (!buffer.current().empty()) emit(type, buffer.current(), buffer.getStartLine());
+        buffer.reset();
+    };
+
+    /* Простая вставка ($x, $x[0], $x->y, ${x}): кусок строки до неё, затем сама вставка */
+    auto interpolate = [&](TokenType type) {
+        flushText(T_STRING_FRAGMENT);
+        emit(type, yytext);
+        strings.back().hasInterpolation = true;
+        startText(yylineno);
+    };
+
+    /* Начало сложной вставки ("{" перед $ или "${"): дальше читаем обычный PHP-код до парной "}" */
+    auto openExpression = [&](TokenType type) {
+        flushText(T_STRING_FRAGMENT);
+        emit(type, yytext);
+        strings.back().hasInterpolation = true;
+        strings.back().braceDepth = 0;
+        strings.back().exprLine = yylineno;
+        yy_push_state(PHP);
+    };
+
+    /* Предыдущий токен - законченный операнд ($x, 5, "a", ], ) ...)? */
+    auto lastIsOperand = [&]() {
+        switch (lastType) {
+            case T_VARIABLE: case T_IDENTIFIER: case T_INTEGER: case T_INTEGER_HEX:
+            case T_INTEGER_BIN: case T_INTEGER_OCT: case T_FLOAT:
+            case T_BOOLEAN: case T_NULL: case T_MAGIC_CONSTANT:
+            case T_STRING_SINGLE: case T_STRING_DOUBLE:
+            case T_RBRACKET: case T_RPAREN:
+                return true;
+            default:
+                return false;
+        }
+    };
+
+    /* %.14g даёт компактную запись */
     auto formatDouble = [](double value) {
         char buf[64];
         std::snprintf(buf, sizeof(buf), "%.14g", value);
@@ -82,587 +209,312 @@ DEP_BRACE    \$\{[A-Za-z_][A-Za-z0-9_]*\}
 
     auto stripUnderscores = [](const std::string& text) {
         std::string result;
-        result.reserve(text.size());
         for (char c : text) if (c != '_') result += c;
         return result;
     };
 
-    auto isBigInteger = [](const std::string& digits, int base) {
-        errno = 0;                                                      // сбрасываем флаг ошибки
-        std::strtoll(digits.c_str(), nullptr, base);  // пробуем прочитать как целое
-        return errno == ERANGE;
-    };
-
-    auto calcBigInteger = [](const std::string& digits, int base) {
-        double result = 0;                                              // не влезло - считаем как дробное
+    /* Целое число: digits - цифры без префикса и без "_". Если не влезло в long long -
+       PHP делает из него float, считаем как дробное. */
+    auto emitInteger = [&](TokenType type, const std::string& digits, int base) {
+        errno = 0;
+        long long value = std::strtoll(digits.c_str(), nullptr, base);
+        if (errno != ERANGE) {
+            emit(type, std::to_string(value));
+            return;
+        }
+        double big = 0;
         for (char c : digits) {
             int digit = isdigit((unsigned char)c) ? c - '0' : tolower((unsigned char)c) - 'a' + 10;
-            result = result * base + digit;                             // как читаем число слева направо
+            big = big * base + digit;
         }
-        return result;
+        emit(T_FLOAT, formatDouble(big));
+    };
+
+    /* Символ после "\" в "...": \n \t \r \v \f \e, а для \\ \" \$ - сам символ */
+    auto unescape = [](char c) {
+        switch (c) {
+            case 'n': return '\n';
+            case 't': return '\t';
+            case 'r': return '\r';
+            case 'v': return '\v';
+            case 'f': return '\f';
+            case 'e': return '\x1b';
+            default:  return c;
+        }
     };
 %}
 
- /* Режим INITIAL */
+ /* Вне PHP-кода */
 
-(?i:"<?php") {
-    if (!buffer.current().empty()) {
-        Console::Log("HTML text (line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
-    }
-    buffer.reset();
-    Console::Log("OpenTag: <?php");
+<INITIAL>(?i:"<?php") {
+    flushText(T_HTML);
+    emit(T_OPEN_TAG, yytext);
     BEGIN(PHP);
 }
 
-"<?=" {
-    if (!buffer.current().empty()) {
-        Console::Log("HTML text (line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
-    }
-    buffer.reset();
-    Console::Log("OpenTagEcho: <?=");
+<INITIAL>"<?=" {
+    flushText(T_HTML);
+    emit(T_OPEN_TAG_ECHO, yytext);
     BEGIN(PHP);
 }
 
-[^<]+ {
-    if (buffer.current().empty()) buffer.setStartLine(yylineno);
-    buffer.append(yytext);
-}
-
-"<" {
-    if (buffer.current().empty()) buffer.setStartLine(yylineno);
-    buffer.append(yytext);
-}
+<INITIAL>[^<]+|"<" { buffer.append(yytext); }
 
 <INITIAL><<EOF>> {
-    if (!buffer.current().empty()) {
-        Console::Log("HTML text (line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
-    }
+    flushText(T_HTML);
     yyterminate();
 }
 
 
- /* Режим PHP: закрывающий тег */
+ /* Теги, комментарии, атрибуты */
 
 <PHP>"?>" {
-    Console::Log("CloseTag: ?>");
-    buffer.reset();
-    BEGIN(INITIAL);
+    if (!strings.empty()) {
+        /* внутри {$ ... } это не закрывающий тег, а обычные "?" и ">" */
+        yyless(1);
+        emit(T_OPERATOR, yytext);
+    } else {
+        emit(T_CLOSE_TAG, yytext);
+        startText(yylineno);
+        BEGIN(INITIAL);
+    }
 }
 
- /* Комментарии (многострочные, однострочные "//" и "#") */
+<PHP>"#[" { emit(T_ATTRIBUTE_OPEN, yytext); }
 
-<PHP,EXPR>"#["        { Console::Log("AttributeOpen: #["); }
-
-<PHP,EXPR>"//"|"#" {
-    buffer.reset();
+ /* Комментарий до конца строки: // ... и # ... */
+<PHP>"//"|"#" {
+    startText(yylineno);
     buffer.append(yytext);
     yy_push_state(LINE_COMMENT);
 }
 
-<LINE_COMMENT>[^\n?]+  { buffer.append(yytext); }
-<LINE_COMMENT>"?"       { buffer.append(yytext); }
+<LINE_COMMENT>[^\n?]+|"?" { buffer.append(yytext); }
 
 <LINE_COMMENT>"?>"|\n {
-    yyless(0);   /* "?>" или перевод строки не часть комментария - возвращаем во вход */
-    Console::Log("Comment (line-style): " + buffer.current());
+    yyless(0);   /* "?>" и перевод строки в комментарий не входят - возвращаем их во вход */
+    emit(T_COMMENT_LINE, buffer.current());
+    buffer.reset();
     yy_pop_state();
 }
 
 <LINE_COMMENT><<EOF>> {
-    Console::Log("Comment (line-style): " + buffer.current());
+    emit(T_COMMENT_LINE, buffer.current());
+    buffer.reset();
     yy_pop_state();
 }
 
+ /* Многострочный комментарий */
 <PHP>"/*" {
-    buffer.reset();
-    buffer.setStartLine(yylineno);
-    BEGIN(COMMENT);
+    startText(yylineno);
+    yy_push_state(COMMENT);
 }
 
-<COMMENT>[^*]+ { buffer.append(yytext); }
-<COMMENT>"*"   { buffer.append(yytext); }
+<COMMENT>[^*]+|"*" { buffer.append(yytext); }
+
 <COMMENT>"*/" {
-    Console::Log("Comment (block, line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
+    emit(T_COMMENT_BLOCK, buffer.current(), buffer.getStartLine());
     buffer.reset();
-    BEGIN(PHP);
+    yy_pop_state();
 }
 
 <COMMENT><<EOF>> {
-    Console::Error("Unterminated block comment starting at line " + std::to_string(buffer.getStartLine()));
+    error("Unterminated block comment starting", buffer.getStartLine());
     yyterminate();
 }
 
- /* Ключевые слова */
 
-<PHP,EXPR>(?i:if)            { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:elseif)        { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:else)          { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:endif)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:while)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:endwhile)      { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:do)            { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:foreach)       { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:endforeach)    { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:for)           { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:endfor)        { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:as)            { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:function)      { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:fn)            { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:return)        { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:echo)          { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:print)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:break)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:continue)      { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:switch)        { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:endswitch)     { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:match)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:case)          { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:default)       { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:class)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:interface)     { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:trait)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:enum)          { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:extends)       { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:implements)    { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:insteadof)     { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:new)           { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:clone)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:instanceof)    { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:public)        { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:private)       { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:protected)     { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:static)        { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:abstract)      { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:final)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:readonly)      { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:var)           { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:const)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:global)        { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:namespace)     { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:use)           { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:try)           { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:catch)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:finally)       { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:throw)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:array)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:list)          { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:isset)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:unset)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:empty)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:exit)          { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:die)           { Console::Log("Keyword: " + std::string(yytext)); /* die - синоним exit */ }
-<PHP,EXPR>(?i:goto)          { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:declare)       { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:enddeclare)    { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:include_once)  { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:include)       { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:require_once)  { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:require)       { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:yield)[ \t\r\n]+(?i:from) { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:yield)         { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:and)           { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:or)            { Console::Log("Keyword: " + std::string(yytext)); }
-<PHP,EXPR>(?i:xor)           { Console::Log("Keyword: " + std::string(yytext)); }
+ /* Слова */
 
-<PHP,EXPR>(?i:true)  { Console::Log("Boolean: " + std::string(yytext)); }
-<PHP,EXPR>(?i:false) { Console::Log("Boolean: " + std::string(yytext)); }
-<PHP,EXPR>(?i:null)  { Console::Log("Null: " + std::string(yytext)); }
+<PHP>{KEYWORD}      { emit(T_KEYWORD, yytext); }
+<PHP>{BOOLEAN}      { emit(T_BOOLEAN, yytext); }
+<PHP>{NULL_LITERAL} { emit(T_NULL, yytext); }
+<PHP>{MAGIC_CONST}  { emit(T_MAGIC_CONSTANT, yytext); }
+<PHP>{CAST}         { emit(T_CAST, yytext); }
+<PHP>{TYPE_NAME}    { emit(T_TYPE, yytext); }
+<PHP>{VARIABLE}     { emit(T_VARIABLE, yytext); }
 
- /* Магические константы */
-<PHP,EXPR>"__LINE__"      { Console::Log("MagicConstant: __LINE__"); }
-<PHP,EXPR>"__FILE__"      { Console::Log("MagicConstant: __FILE__"); }
-<PHP,EXPR>"__DIR__"       { Console::Log("MagicConstant: __DIR__"); }
-<PHP,EXPR>"__FUNCTION__"  { Console::Log("MagicConstant: __FUNCTION__"); }
-<PHP,EXPR>"__CLASS__"     { Console::Log("MagicConstant: __CLASS__"); }
-<PHP,EXPR>"__METHOD__"    { Console::Log("MagicConstant: __METHOD__"); }
-<PHP,EXPR>"__NAMESPACE__" { Console::Log("MagicConstant: __NAMESPACE__"); }
-<PHP,EXPR>"__TRAIT__"     { Console::Log("MagicConstant: __TRAIT__"); }
+ /* Идентификаторы, в том числе составные: Foo\Bar\Baz, \Fully\Qualified, namespace\Rel.
+    Стоит ПОСЛЕ ключевых слов, типов и констант: при равной длине побеждает правило выше */
+<PHP>{QUALIFIED}    { emit(T_IDENTIFIER, yytext); }
 
+ /* Одиночный "\" перед "{" - групповой импорт: use App\Models\{Post, Comment};
+    {QUALIFIED} до него "дотянуться" не может, поэтому нужен отдельный токен. */
+<PHP>"\\" { emit(T_NS_SEPARATOR, yytext); }
 
- /* Приведение типов - (int) (float) (string)  */
+ /* Одиночный $ - в $$var (переменная-переменная) и ${expr} */
+<PHP>"$" { emit(T_DOLLAR, yytext); }
 
-<PHP,EXPR>"("[ \t]*{CAST_TYPE}[ \t]*")" { Console::Log("Operator (cast): " + std::string(yytext)); }
-
-
- /* Операции */
-
-<PHP,EXPR>"..." { Console::Log("Operator: ..."); }
-<PHP,EXPR>"**=" { Console::Log("Operator: **="); }
-<PHP,EXPR>"<=>" { Console::Log("Operator: <=>"); }
-<PHP,EXPR>"??=" { Console::Log("Operator: ?" "?="); }
-<PHP,EXPR>"?->" { Console::Log("Operator: ?" "->"); yy_push_state(MEMBER); }
-<PHP,EXPR>"===" { Console::Log("Operator: ==="); }
-<PHP,EXPR>"!==" { Console::Log("Operator: !=="); }
-<PHP,EXPR>"=="  { Console::Log("Operator: =="); }
-<PHP,EXPR>"!="  { Console::Log("Operator: !="); }
-<PHP,EXPR>"<>"  { Console::Log("Operator: <>"); }
-<PHP,EXPR>"<="  { Console::Log("Operator: <="); }
-<PHP,EXPR>">="  { Console::Log("Operator: >="); }
-<PHP,EXPR>"&&"  { Console::Log("Operator: &&"); }
-<PHP,EXPR>"||"  { Console::Log("Operator: ||"); }
-<PHP,EXPR>"??"  { Console::Log("Operator: ??"); }
-<PHP,EXPR>"?:"  { Console::Log("Operator: ?:"); }
-<PHP,EXPR>"->"  { Console::Log("Operator: ->"); yy_push_state(MEMBER); }
-<PHP,EXPR>"=>"  { Console::Log("Operator: =>"); }
-<PHP,EXPR>"::"  { Console::Log("Operator: ::"); }
-<PHP,EXPR>"++"  { Console::Log("Operator: ++"); }
-<PHP,EXPR>"--"  { Console::Log("Operator: --"); }
-<PHP,EXPR>"**"  { Console::Log("Operator: **"); }
-<PHP,EXPR>"+="  { Console::Log("Operator: +="); }
-<PHP,EXPR>"-="  { Console::Log("Operator: -="); }
-<PHP,EXPR>"*="  { Console::Log("Operator: *="); }
-<PHP,EXPR>"/="  { Console::Log("Operator: /="); }
-<PHP,EXPR>".="  { Console::Log("Operator: .="); }
-<PHP,EXPR>"%="  { Console::Log("Operator: %="); }
-<PHP,EXPR>"&="  { Console::Log("Operator: &="); }
-<PHP,EXPR>"|="  { Console::Log("Operator: |="); }
-<PHP,EXPR>"^="  { Console::Log("Operator: ^="); }
-<PHP,EXPR>"<<=" { Console::Log("Operator: <<="); }
-<PHP,EXPR>">>=" { Console::Log("Operator: >>="); }
-<PHP,EXPR>"<<"  { Console::Log("Operator: <<"); }
-<PHP,EXPR>">>"  { Console::Log("Operator: >>"); }
-
-<PHP,EXPR>"+" { Console::Log("Operator: +"); }
-<PHP,EXPR>"-" { Console::Log("Operator: -"); }
-<PHP,EXPR>"*" { Console::Log("Operator: *"); }
-<PHP,EXPR>"/" { Console::Log("Operator: /"); }
-<PHP,EXPR>"%" { Console::Log("Operator: %"); }
-<PHP,EXPR>"." { Console::Log("Operator: ."); }
-<PHP,EXPR>"=" { Console::Log("Operator: ="); }
-<PHP,EXPR>"<" { Console::Log("Operator: <"); }
-<PHP,EXPR>">" { Console::Log("Operator: >"); }
-<PHP,EXPR>"!" { Console::Log("Operator: !"); }
-<PHP,EXPR>"?" { Console::Log("Operator: ?"); }
-<PHP,EXPR>"&" { Console::Log("Operator: &"); }
-<PHP,EXPR>"|" { Console::Log("Operator: |"); }
-<PHP,EXPR>"^" { Console::Log("Operator: ^"); }
-<PHP,EXPR>"~" { Console::Log("Operator: ~"); }
-<PHP,EXPR>"@" { Console::Log("Operator: @"); }
-
- /* Одиночный $ - используется в $$var (переменная-переменная)
-    и в устаревшем синтаксисе ${expr} */
-<PHP,EXPR>"$" { Console::Log("Dollar: $"); }
-
-
- /* Пунктуация */
-
-<PHP,EXPR>"(" { Console::Log("LParen: ("); }
-<PHP,EXPR>")" { Console::Log("RParen: )"); }
-<PHP,EXPR>"{" {
-    if (YY_START == EXPR) exprDepth.back()++;
-    Console::Log("LBrace: {");
+ /* Имя переменной не может начинаться с цифры ($1abc) */
+<PHP>\$[0-9][A-Za-z0-9_]* {
+    error("Invalid variable name '" + std::string(yytext) + "'", yylineno);
 }
-<PHP,EXPR>"}" {
-    /* Если мы внутри сложной интерполяции {$...} - эта "}"
-       закрывает её и возвращает нас в породившую строку.
-       Если мы в обычном PHP-коде - это просто закрывающая
-       фигурная скобка блока */
-    if (YY_START == EXPR && exprDepth.back() > 0) {
-        exprDepth.back()--;
-        Console::Log("RBrace: }");
-    } else if (YY_START == EXPR) {
-        Console::Log("InterpolationEnd: }");
-        exprDepth.pop_back();
-        yy_pop_state();
+
+ /* После -> и ?-> идёт имя члена класса (допустимо даже ключевое слово: $a->if) */
+<PHP>"?->"|"->" {
+    emit(T_OPERATOR, yytext);
+    yy_push_state(MEMBER);
+}
+
+<MEMBER>{NAME_SEG} {
+    emit(T_IDENTIFIER, yytext);
+    yy_pop_state();
+}
+
+<MEMBER>[ \t\r\n\v\f]+ { /* пробелы между -> и именем допустимы */ }
+
+<MEMBER>. {
+    yyless(0);   /* дальше не имя ($o->$name, $o->{...}) - пусть разбирается PHP-режим */
+    yy_pop_state();
+}
+
+<MEMBER><<EOF>> { yy_pop_state(); }
+
+
+ /* Операции и пунктуация */
+
+<PHP>{OPERATOR} { emit(T_OPERATOR, yytext); }
+
+<PHP>"("  { emit(T_LPAREN, yytext); }
+<PHP>")"  { emit(T_RPAREN, yytext); }
+<PHP>"["  { emit(T_LBRACKET, yytext); }
+<PHP>"]"  { emit(T_RBRACKET, yytext); }
+<PHP>","  { emit(T_COMMA, yytext); }
+<PHP>";"  { emit(T_SEMICOLON, yytext); }
+<PHP>":"  { emit(T_COLON, yytext); }
+
+ /* Фигурные скобки. Внутри вставки {$ ... } считаем вложенные "{",
+    чтобы первая же "}" не закрыла вставку раньше времени */
+<PHP>"{" {
+    if (!strings.empty()) strings.back().braceDepth++;
+    emit(T_LBRACE, yytext);
+}
+
+<PHP>"}" {
+    if (strings.empty()) {
+        emit(T_RBRACE, yytext);                      /* обычный блок кода */
+    } else if (strings.back().braceDepth > 0) {
+        strings.back().braceDepth--;                 /* закрылась вложенная "{" внутри вставки */
+        emit(T_RBRACE, yytext);
     } else {
-        Console::Log("RBrace: }");
+        emit(T_INTERP_END, yytext);                  /* закрылась сама вставка */
+        startText(yylineno);
+        yy_pop_state();                              /* назад в текст строки (STRING_D) */
     }
 }
-<PHP,EXPR>"[" { Console::Log("LBracket: ["); }
-<PHP,EXPR>"]" { Console::Log("RBracket: ]"); }
-<PHP,EXPR>"," { Console::Log("Comma: ,"); }
-<PHP,EXPR>";" { Console::Log("Semicolon: ;"); }
-<PHP,EXPR>":" { Console::Log("Colon: :"); }
 
 
  /* Числа */
 
-<PHP,EXPR>{FLOAT} {
-    double value = std::strtod(stripUnderscores(yytext).c_str(), nullptr);
-    Console::Log("Float: " + formatDouble(value));
+<PHP>{FLOAT}        { emit(T_FLOAT, formatDouble(std::strtod(stripUnderscores(yytext).c_str(), nullptr))); }
+<PHP>{INT_HEX}      { emitInteger(T_INTEGER_HEX, stripUnderscores(yytext + 2), 16); }
+<PHP>{INT_BIN}      { emitInteger(T_INTEGER_BIN, stripUnderscores(yytext + 2), 2); }
+<PHP>{INT_OCT_NEW}  { emitInteger(T_INTEGER_OCT, stripUnderscores(yytext + 2), 8); }
+<PHP>{INT_OCT_OLD}  { emitInteger(T_INTEGER_OCT, stripUnderscores(yytext + 1), 8); }
+<PHP>{INTEGER}      { emitInteger(T_INTEGER, stripUnderscores(yytext), 10); }
+
+ /* Число с мусорным хвостом всегда длиннее любого корректного числа на том же месте,
+    поэтому побеждает без конфликтов. */
+<PHP>{NUMBER_ANY}[A-Za-z0-9_]+ {
+    error("Invalid numeric literal '" + std::string(yytext) + "'", yylineno);
 }
 
-<PHP,EXPR>{INT_HEX} {
-    std::string int_str = stripUnderscores(yytext).substr(2);
-    if (isBigInteger(int_str, 16)) {
-        double value = calcBigInteger(int_str, 16);
-        Console::Log("Float: " + formatDouble(value));
-    }
-    else {
-        long long value = std::strtoll(int_str.c_str(), nullptr, 16);
-        Console::Log("Integer (hex): " + std::to_string(value));
-    }
-}
-<PHP,EXPR>{INT_BIN} {
-    std::string int_str = stripUnderscores(yytext).substr(2);
-    if (isBigInteger(int_str, 2)) {
-        double value = calcBigInteger(int_str, 2);
-        Console::Log("Float: " + formatDouble(value));
-    }
-    else {
-        long long value = std::strtoll(int_str.c_str(), nullptr, 2);
-        Console::Log("Integer (binary): " + std::to_string(value));
-    }
-}
-<PHP,EXPR>{INT_OCT_NEW} {
-    std::string int_str = stripUnderscores(yytext).substr(2);
-    if (isBigInteger(int_str, 8)) {
-        double value = calcBigInteger(int_str, 8);
-        Console::Log("Float: " + formatDouble(value));
-    }
-    else {
-        long long value = std::strtoll(int_str.c_str(), nullptr, 8);
-        Console::Log("Integer (octal): " + std::to_string(value));
-    }
-}
-<PHP,EXPR>{INT_OCT_OLD} {
-    std::string int_str = stripUnderscores(yytext).substr(1);
-    if (isBigInteger(int_str, 8)) {
-        double value = calcBigInteger(int_str, 8);
-        Console::Log("Float: " + formatDouble(value));
-    }
-    else {
-        long long value = std::strtoll(int_str.c_str(), nullptr, 8);
-        Console::Log("Integer (octal): " + std::to_string(value));
-    }
-}
-<PHP,EXPR>{INTEGER} {
-    std::string int_str = stripUnderscores(yytext);
-    if (isBigInteger(int_str, 10)) {
-        double value = calcBigInteger(int_str, 10);
-        Console::Log("Float: " + formatDouble(value));
-    }
-    else {
-        long long value = std::strtoll(int_str.c_str(), nullptr, 10);
-        Console::Log("Integer: " + std::to_string(value));
-    }
-}
-
- /* Число с мусорным хвостом: 123abc, 0x1Ag, 0b1010xyz, 1.5ex, 5.f00,
-    1__000000, 0o_17 ... Всегда длиннее любого корректного числа на
-    том же месте, поэтому побеждает без конфликтов. */
-<PHP,EXPR>{NUMBER_ANY}[A-Za-z0-9_]+ {
-    Console::Error("Invalid numeric literal '" + std::string(yytext) + "' at line " + std::to_string(yylineno));
-}
-
- /* Переменная, имя которой начинается с цифры ($1abc, $1): по правилам
-    PHP имя переменной начинается с буквы или подчёркивания. Действует
-    только в коде, не внутри "..." (там "$1abc" - просто текст). */
-<PHP,EXPR>\$[0-9][A-Za-z0-9_]* {
-    Console::Error("Invalid variable name '" + std::string(yytext) + "' at line " + std::to_string(yylineno));
-}
 
  /* Строки в одинарных кавычках */
 
-<PHP,EXPR>\' {
-    buffer.reset();
-    buffer.setStartLine(yylineno);
+<PHP>\' {
+    startText(yylineno);
     yy_push_state(STRING_S);
 }
 
-<STRING_S>\\\\ { buffer.append("\\"); }
-<STRING_S>\\\' { buffer.append("'"); }
-<STRING_S>[^'\\]+ { buffer.append(yytext); }
-<STRING_S>\\(.|\n) { buffer.append(yytext); }
+<STRING_S>\\[\\']   { buffer.append(yytext + 1); }      /* экранированные слеш и кавычка - сам символ */
+<STRING_S>[^'\\]+   { buffer.append(yytext); }
+<STRING_S>\\(.|\n)  { buffer.append(yytext); }          /* прочие последовательности остаются как есть */
 
 <STRING_S>\' {
-    Console::Log("String (single, line " + std::to_string(buffer.getStartLine()) + "): \'" + buffer.current() + "\'");
+    emit(T_STRING_SINGLE, buffer.current(), buffer.getStartLine());
     buffer.reset();
     yy_pop_state();
 }
 
 <STRING_S><<EOF>> {
-    Console::Error("Unterminated single-quoted string starting at line " + std::to_string(buffer.getStartLine()));
+    error("Unterminated single-quoted string starting", buffer.getStartLine());
     yyterminate();
 }
 
 
- /* Строки в двойных кавычках */
+ /* Строки в двойных кавычках
+    Строка "a $x b {$y} c" превращается в последовательность токенов:
+        фрагмент "a " | вставка $x | фрагмент " b " | { | ...код... | } | фрагмент " c"
+    Если вставок не было - вся строка один токен (T_STRING_DOUBLE).
+    Состояние открытой строки хранится в strings.back(). */
 
-<PHP,EXPR>\" {
-    /* Сообщить об ошибке, выйти из {$...} и
-       отдать эту же кавычку (yyless(0)) внешней строке, чтобы она закрылась. */
-    if (YY_START == EXPR && exprDepth.back() == 0 &&
-        (isalnum((unsigned char)prevChar) || prevChar == '_' || prevChar == ']' || prevChar == ')')) {
-        Console::Error("Unterminated {$...} interpolation: missing '}' before closing quote at line " + std::to_string(yylineno));
-        exprDepth.pop_back();
+<PHP>\" {
+    if (!strings.empty() && strings.back().braceDepth == 0 && lastIsOperand()) {
+        /* "{$x" - перед кавычкой законченный операнд, значит это не начало новой строки,
+           а закрывающая кавычка внешней строки: "}" забыли */
+        error("Unterminated {$...} interpolation: missing '}' before closing quote", yylineno);
         yy_pop_state();
         yyless(0);
     } else {
-        buffer.reset();
-        buffer.setStartLine(yylineno);
-        savedStrings.push_back({stringStartLine, stringHadInterpolation});
-        stringStartLine = yylineno;
-        stringHadInterpolation = false;
+        strings.push_back({ yylineno, false, 0, 0 });
+        startText(yylineno);
         yy_push_state(STRING_D);
     }
 }
 
-<STRING_D>\\n  { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append("\n"); }
-<STRING_D>\\t  { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append("\t"); }
-<STRING_D>\\r  { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append("\r"); }
-<STRING_D>\\v  { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append("\v"); }
-<STRING_D>\\f  { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append("\f"); }
-<STRING_D>\\e  { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append("\x1b"); }
-<STRING_D>\\\"         { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append("\""); }
-<STRING_D>\\\\ { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append("\\"); }
-<STRING_D>\\\$ { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append("$"); }
-<STRING_D>\\[0-7]{1,3} {
-    if (buffer.current().empty()) buffer.setStartLine(yylineno);
-    char c = (char)std::strtol(yytext + 1, nullptr, 8);
-    buffer.append(std::string(1, c));
-}
-<STRING_D>\\x[0-9A-Fa-f]{1,2} {
-    if (buffer.current().empty()) buffer.setStartLine(yylineno);
-    char c = (char)std::strtol(yytext + 2, nullptr, 16);
-    buffer.append(std::string(1, c));
-}
+ /* Escape-последовательности */
+<STRING_D>\\[ntrvfe\\\"$]       { buffer.append(std::string(1, unescape(yytext[1]))); }
+<STRING_D>\\[0-7]{1,3}          { buffer.append(std::string(1, (char)std::strtol(yytext + 1, nullptr, 8))); }
+<STRING_D>\\x[0-9A-Fa-f]{1,2}   { buffer.append(std::string(1, (char)std::strtol(yytext + 2, nullptr, 16))); }
+<STRING_D>\\(.|\n)              { buffer.append(yytext); }
 
-<STRING_D>\\(.|\n) { if (buffer.current().empty()) buffer.setStartLine(yylineno); buffer.append(yytext); }
+ /* Простые вставки: каждая - один токен */
+<STRING_D>{SIMPLE_IDX}   { interpolate(T_INTERP_ARRAY); }
+<STRING_D>{SIMPLE_PROP}  { interpolate(T_INTERP_PROPERTY); }
+<STRING_D>{DEP_BRACE}    { interpolate(T_INTERP_DEPRECATED); }
+<STRING_D>{SIMPLE_VAR}   { interpolate(T_INTERP_VARIABLE); }
 
- /* Простая интерполяция: $var, $var[key], $var->prop, ${var} */
+ /* Сложные вставки: дальше читаем обычный PHP-код до парной "}" */
+<STRING_D>"{"/"$"        { openExpression(T_INTERP_START); }
+<STRING_D>"${"           { openExpression(T_INTERP_START_DOLLAR); }
 
-<STRING_D>{SIMPLE_IDX} {
-    if (!buffer.current().empty()) {
-        Console::Log("String fragment (double, line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
-        buffer.reset();
-    }
-    Console::Log("Interpolated variable (array access): " + std::string(yytext));
-    stringHadInterpolation = true;
-}
-
-<STRING_D>{SIMPLE_PROP} {
-    if (!buffer.current().empty()) {
-        Console::Log("String fragment (double, line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
-        buffer.reset();
-    }
-    Console::Log("Interpolated variable (property access): " + std::string(yytext));
-    stringHadInterpolation = true;
-}
-
-<STRING_D>{DEP_BRACE} {
-    if (!buffer.current().empty()) {
-        Console::Log("String fragment (double, line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
-        buffer.reset();
-    }
-    Console::Log("Interpolated variable (deprecated syntax): " + std::string(yytext));
-    stringHadInterpolation = true;
-}
-
-<STRING_D>"${" {
-    if (!buffer.current().empty()) {
-        Console::Log("String fragment (double, line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
-        buffer.reset();
-    }
-    Console::Log("InterpolationStart (dollar-curly): ${");
-    stringHadInterpolation = true;
-    exprDepth.push_back(0);
-    yy_push_state(EXPR);
-}
-
-<STRING_D>{SIMPLE_VAR} {
-    if (!buffer.current().empty()) {
-        Console::Log("String fragment (double, line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
-        buffer.reset();
-    }
-    Console::Log("Interpolated variable: " + std::string(yytext));
-    stringHadInterpolation = true;
-}
-
- /* Сложная интерполяция {$...} - произвольное выражение,
-    включая $$var (переменная-переменная), $obj->method(),
-    $arr[$key]['x'], и т.п. */
-
-<STRING_D>"{"/"$" {
-    if (!buffer.current().empty()) {
-        Console::Log("String fragment (double, line " + std::to_string(buffer.getStartLine()) + "): \"" + buffer.current() + "\"");
-        buffer.reset();
-    }
-    Console::Log("InterpolationStart: {");
-    stringHadInterpolation = true;
-    exprDepth.push_back(0);
-    yy_push_state(EXPR);
-}
-
-<EXPR><<EOF>> {
-    Console::Error("Unterminated {$...} interpolation at line " + std::to_string(yylineno));
-    yyterminate();
-}
-
-<STRING_D>[^"\\${\n]+ {
-    if (buffer.current().empty()) buffer.setStartLine(yylineno);
-    buffer.append(yytext);
-}
-
-<STRING_D>"{" {
-    if (buffer.current().empty()) buffer.setStartLine(yylineno);
-    buffer.append(yytext);
-}
-
-<STRING_D>[$\n] {
-    if (buffer.current().empty()) buffer.setStartLine(yylineno);
-    buffer.append(yytext);
-}
+ /* Обычный текст; одиночные "$" и "{" (не начало вставки) - тоже текст */
+<STRING_D>[^"\\${]+ { buffer.append(yytext); }
+<STRING_D>[${]      { buffer.append(yytext); }
 
 <STRING_D>\" {
-    if (!buffer.current().empty() || !stringHadInterpolation) {
-        std::string label = stringHadInterpolation ? "String fragment (double" : "String (double";
-        Console::Log(label + ", line " + std::to_string(stringStartLine) + "): \"" + buffer.current() + "\"");
-    }
+    StringFrame frame = strings.back();
+    strings.pop_back();
+
+    if (frame.hasInterpolation)
+        flushText(T_STRING_FRAGMENT);       /* хвост после последней вставки (если он не пуст) */
+    else
+        emit(T_STRING_DOUBLE, buffer.current(), frame.startLine);
+
     buffer.reset();
-    stringStartLine = savedStrings.back().first;
-    stringHadInterpolation = savedStrings.back().second;
-    savedStrings.pop_back();
     yy_pop_state();
 }
 
 <STRING_D><<EOF>> {
-    Console::Error("Unterminated double-quoted string starting at line " + std::to_string(stringStartLine));
+    error("Unterminated double-quoted string starting", strings.back().startLine);
     yyterminate();
 }
 
 
- /* Идентификаторы (в т.ч. составные, разделённые "\" - имена
-    пространств имён: Foo\Bar\Baz, \Fully\Qualified, namespace\Rel) */
+ /* Конец входа в PHP-режиме, пробелы, ошибки */
 
-<PHP,EXPR>(?i:int)      { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:integer)  { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:float)    { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:double)   { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:string)   { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:bool)     { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:boolean)  { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:object)   { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:void)     { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:mixed)    { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:never)    { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:iterable) { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:callable) { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:self)     { Console::Log("Type: " + std::string(yytext)); }
-<PHP,EXPR>(?i:parent)   { Console::Log("Type: " + std::string(yytext)); }
+ /* Конец файла в PHP-режиме. Если мы внутри вставки {$ ... } - она не закрыта */
+<PHP><<EOF>> {
+    if (!strings.empty())
+        error("Unterminated {$...} interpolation starting", strings.back().exprLine);
+    yyterminate();
+}
 
-<PHP,EXPR>{VARIABLE} { Console::Log("Variable: " + std::string(yytext)); }
-<PHP,EXPR>{QUALIFIED} { Console::Log("Identifier: " + std::string(yytext)); }
+<PHP>[ \t\r\n\v\f]+ { /* пробелы между токенами */ }
 
- /* Одиночный "\" перед "{" - используется в групповом импорте
-    (PHP 7.0+): use App\Models\{Post, Comment};
-    Правило {QUALIFIED} само по себе не может "дотянуться" до этой
-    "\", т.к. за ней не следует имя (там сразу "{"), поэтому нужен
-    отдельный, более короткий (а значит, применяемый лишь когда
-    длинного варианта не нашлось) токен-сепаратор. */
-<PHP,EXPR>"\\" { Console::Log("NamespaceSeparator: \\"); }
-
- /* после ?-> и -> идут идентификаторы (даже ключевые слова) */
-<MEMBER>{NAME_SEG}       { Console::Log("Identifier: " + std::string(yytext)); yy_pop_state(); }
-<MEMBER>[ \t\r\n\v\f]+   { /* пробелы между -> и именем допустимы */ }
-<MEMBER>.                { yyless(0); yy_pop_state(); }   /* дальше не имя: $o->$name, $o->{...} */
-
- /* Пробелы и ошибочные символы */
-
-<PHP,EXPR>[ \t\r\n\v\f]+ { /* игнорируем пробелы внутри PHP-кода */ }
-
-<PHP,EXPR>. {
-    Console::Error("Unexpected symbol '" + std::string(yytext) + "' at line " + std::to_string(yylineno));
+<PHP>. {
+    error("Unexpected symbol '" + std::string(yytext) + "'", yylineno);
 }
 
 %%
