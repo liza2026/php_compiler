@@ -141,7 +141,7 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 
     /* Ключевые слова */
 abstract        { Console::Log("Keyword: abstract"); }
-array           { Console::Log("Keyword: array"); }
+array           { Console::Log("Keyword: array"); return T_ARRAY; }
 as              { Console::Log("Keyword: as"); }
 break           { Console::Log("Keyword: break"); }
 callable        { Console::Log("Keyword: callable"); }
@@ -209,14 +209,14 @@ yield           { Console::Log("Keyword: yield"); }
 yield[ \t\r\n]+from { Console::Log("Keyword: yield from"); }
 
     /* Ключевые слова, являющиеся операторами */
-and             { Console::Log("Operator: and"); }
-or              { Console::Log("Operator: or"); }
-xor             { Console::Log("Operator: xor"); }
+and             { Console::Log("Operator: and"); return T_LOGICAL_AND; }
+or              { Console::Log("Operator: or"); return T_LOGICAL_OR; }
+xor             { Console::Log("Operator: xor"); return T_LOGICAL_XOR; }
 
     /* Константы */
-true            { Console::Log("Boolean: true"); }
-false           { Console::Log("Boolean: false"); }
-null            { Console::Log("Null: null"); }
+true            { Console::Log("Boolean: true"); return T_TRUE; }
+false           { Console::Log("Boolean: false"); return T_FALSE; }
+null            { Console::Log("Null: null"); return T_NULL; }
 __(line|file|dir|function|class|method|namespace|trait)__ {
     Console::Log("MagicConstant: " + string(yytext));
 }
@@ -231,36 +231,37 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 
 
     /* Операторы */
-"..."   { Console::Log("Operator: ..."); }
-"**="   { Console::Log("Operator: **="); }
-"<=>"   { Console::Log("Operator: <=>"); }
-"??="   { Console::Log("Operator: ?" "?="); }
-"==="   { Console::Log("Operator: ==="); }
-"!=="   { Console::Log("Operator: !=="); }
-"=="    { Console::Log("Operator: =="); }
-"!="|"<>" { Console::Log("Operator: !="); }
-"<="    { Console::Log("Operator: <="); }
-">="    { Console::Log("Operator: >="); }
-"&&"    { Console::Log("Operator: &&"); }
-"||"    { Console::Log("Operator: ||"); }
-"??"    { Console::Log("Operator: ??"); }
-"=>"    { Console::Log("Operator: =>"); }
-"++"    { Console::Log("Operator: ++"); }
-"--"    { Console::Log("Operator: --"); }
-"**"    { Console::Log("Operator: **"); }
-"+="    { Console::Log("Operator: +="); }
-"-="    { Console::Log("Operator: -="); }
-"*="    { Console::Log("Operator: *="); }
-"/="    { Console::Log("Operator: /="); }
-".="    { Console::Log("Operator: .="); }
-"%="    { Console::Log("Operator: %="); }
-"&="    { Console::Log("Operator: &="); }
-"|="    { Console::Log("Operator: |="); }
-"^="    { Console::Log("Operator: ^="); }
-"<<="   { Console::Log("Operator: <<="); }
-">>="   { Console::Log("Operator: >>="); }
-"<<"    { Console::Log("Operator: <<"); }
-">>"    { Console::Log("Operator: >>"); }
+    /* Операторы */
+"..."   { Console::Log("Operator: ..."); return T_ELLIPSIS; }
+"**="   { Console::Log("Operator: **="); return T_POW_EQUAL; }
+"<=>"   { Console::Log("Operator: <=>"); return T_SPACESHIP; }
+"??="   { Console::Log("Operator: ?" "?="); return T_COALESCE_EQUAL; }
+"==="   { Console::Log("Operator: ==="); return T_IS_IDENTICAL; }
+"!=="   { Console::Log("Operator: !=="); return T_IS_NOT_IDENTICAL; }
+"=="    { Console::Log("Operator: =="); return T_IS_EQUAL; }
+"!="|"<>" { Console::Log("Operator: !="); return T_IS_NOT_EQUAL; }
+"<="    { Console::Log("Operator: <="); return T_IS_SMALLER_OR_EQUAL; }
+">="    { Console::Log("Operator: >="); return T_IS_GREATER_OR_EQUAL; }
+"&&"    { Console::Log("Operator: &&"); return T_BOOLEAN_AND; }
+"||"    { Console::Log("Operator: ||"); return T_BOOLEAN_OR; }
+"??"    { Console::Log("Operator: ??"); return T_COALESCE; }
+"=>"    { Console::Log("Operator: =>"); return T_DOUBLE_ARROW; }
+"++"    { Console::Log("Operator: ++"); return T_INC; }
+"--"    { Console::Log("Operator: --"); return T_DEC; }
+"**"    { Console::Log("Operator: **"); return T_POW; }
+"+="    { Console::Log("Operator: +="); return T_PLUS_EQUAL; }
+"-="    { Console::Log("Operator: -="); return T_MINUS_EQUAL; }
+"*="    { Console::Log("Operator: *="); return T_MUL_EQUAL; }
+"/="    { Console::Log("Operator: /="); return T_DIV_EQUAL; }
+".="    { Console::Log("Operator: .="); return T_CONCAT_EQUAL; }
+"%="    { Console::Log("Operator: %="); return T_MOD_EQUAL; }
+"&="    { Console::Log("Operator: &="); return T_AND_EQUAL; }
+"|="    { Console::Log("Operator: |="); return T_OR_EQUAL; }
+"^="    { Console::Log("Operator: ^="); return T_XOR_EQUAL; }
+"<<="   { Console::Log("Operator: <<="); return T_SL_EQUAL; }
+">>="   { Console::Log("Operator: >>="); return T_SR_EQUAL; }
+"<<"    { Console::Log("Operator: <<"); return T_SL; }
+">>"    { Console::Log("Operator: >>"); return T_SR; }
 
     /* Односимвольные операторы и разделители */
 [-+*/%.=<>!?&|^~@] {
@@ -480,8 +481,10 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 <STRING_S>\' {
     Console::Log("String literal (line " + std::to_string(stringBuf.getStartLine()) + "): '" + stringBuf.current() + "'");
+    yylval.str = new std::string(stringBuf.current());
     stringBuf.reset();
     yy_pop_state();
+    return T_CONSTANT_STRING;
 }
 <STRING_S><<EOF>> {
     Console::Error("Unterminated single-quoted string starting at line " + std::to_string(stringBuf.getStartLine()));
