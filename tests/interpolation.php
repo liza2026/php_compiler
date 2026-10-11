@@ -78,7 +78,6 @@ echo "Func call: {foo($a)}";
 // Граничные случаи
 echo "Empty braces: {}";           // это НЕ интерполяция, просто текст
 echo "Just brace: {";              // текст
-echo "Unclosed: {$name";
 
 // экранирование внутри {$...}
 echo "Escaped dollar: {\$name}";   // не интерполяция
@@ -96,3 +95,5 @@ echo "double {$name}";             // интерполируется
 echo "Closure: {$fn(function() { return 1; })}";
 
 echo "{$arr["{$arr["key"]}"]}";
+
+echo "Unclosed: {$name";
