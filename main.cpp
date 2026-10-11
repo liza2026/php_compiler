@@ -7,7 +7,7 @@
 #include "core/helpers/Console.h"
 
 extern FILE* yyin;
-extern int yylex();
+extern int yyparse();
 
 int main(int argc, char* argv[]) {
 
@@ -26,9 +26,12 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    yylex();
+    int result = yyparse();
 
     fclose(yyin);
 
-    return 0;
+    if (result == 0) {
+        printf("Parse OK\n");
+    }
+    return result;
 }

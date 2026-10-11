@@ -1,38 +1,23 @@
 cmake_minimum_required(VERSION 3.16)
-project(php_lexer)
+project(php_parser CXX)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_program(FLEX_EXECUTABLE flex)
-if (NOT FLEX_EXECUTABLE)
-    message(FATAL_ERROR "Flex not found! Install flex and try again.")
-endif ()
+find_package(FLEX REQUIRED)
+find_package(BISON REQUIRED)
 
-set(SOURCE_LEXER_FILE "${CMAKE_SOURCE_DIR}/lexer.l")
-set(GENERATED_LEXER_FILE "${CMAKE_CURRENT_BINARY_DIR}/lex.yy.cpp")
+FLEX_TARGET(Lexer ${CMAKE_SOURCE_DIR}/lexer.l ${CMAKE_BINARY_DIR}/lex.yy.cpp)
+BISON_TARGET(Parser ${CMAKE_SOURCE_DIR}/parser.y ${CMAKE_BINARY_DIR}/parser.tab.cpp
+        DEFINES_FILE ${CMAKE_BINARY_DIR}/parser.tab.hpp)
+ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
-add_custom_command(
-        OUTPUT ${GENERATED_LEXER_FILE}
-        COMMAND ${FLEX_EXECUTABLE} -o ${GENERATED_LEXER_FILE} ${SOURCE_LEXER_FILE}
-        DEPENDS ${SOURCE_LEXER_FILE}
-        COMMENT "Generating C++ lexer with Flex"
-)
-
-set(CORE_SOURCES
+add_executable(php_parser
+        main.cpp
         core/helpers/Console.cpp
         core/helpers/Buffer.cpp
+        ${FLEX_Lexer_OUTPUTS}
+        ${BISON_Parser_OUTPUTS}
 )
 
-set(MAIN_SOURCES
-        main.cpp
-)
-
-add_executable(php_lexer
-        ${MAIN_SOURCES}
-        ${CORE_SOURCES}
-        ${GENERATED_LEXER_FILE}
-)
-
-set_source_files_properties(${GENERATED_LEXER_FILE} PROPERTIES LANGUAGE CXX)
-
-target_include_directories(php_lexer PRIVATE ${CMAKE_SOURCE_DIR})
+target_include_directories(php_parser PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
