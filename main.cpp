@@ -8,6 +8,7 @@
 
 extern FILE* yyin;
 extern int yyparse();
+extern int yydebug;
 
 int main(int argc, char* argv[]) {
 
@@ -26,6 +27,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    yydebug = 0;
     int result = yyparse();
 
     fclose(yyin);

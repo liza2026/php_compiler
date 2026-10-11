@@ -17,6 +17,7 @@
     #include <vector>
     #include "core/helpers/Console.h"
     #include "core/helpers/Buffer.h"
+    #include "parser.tab.hpp"
     using std::string;
 
     std::string formatDouble(double value);
@@ -99,9 +100,12 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 <NOPHP>"<?=" {
     Console::Log("OpenTagEcho: <?=");
     BEGIN(INITIAL);
+    return T_ECHO;
 }
 <NOPHP>([^<]|"<"[^?<])+|"<" {
     Console::Log("HTML text: \"" + string(yytext) + "\"");
+    yylval.str = new std::string(yytext);
+    return T_INLINE_HTML;
 }
 <NOPHP><<EOF>> { yyterminate(); }
 
@@ -114,6 +118,7 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 "?>" {
     Console::Log("CloseTag: ?>");
     BEGIN(NOPHP);
+    return ';';
 }
 
 
@@ -149,7 +154,7 @@ continue        { Console::Log("Keyword: continue"); }
 declare         { Console::Log("Keyword: declare"); }
 default         { Console::Log("Keyword: default"); }
 do              { Console::Log("Keyword: do"); }
-echo            { Console::Log("Keyword: echo"); }
+echo            { Console::Log("Keyword: echo"); return T_ECHO; }
 else            { Console::Log("Keyword: else"); }
 elseif          { Console::Log("Keyword: elseif"); }
 empty           { Console::Log("Keyword: empty"); }
@@ -260,18 +265,22 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     /* Односимвольные операторы и разделители */
 [-+*/%.=<>!?&|^~@] {
     Console::Log("Operator: " + string(yytext));
+    return yytext[0];
 }
 [()\[\],;:\\] {
     Console::Log("Separator: " + string(yytext));
+    return yytext[0];
 }
 "$" {
     Console::Log("Dollar: $");
 }
 "{" {
     Console::Log("Separator: {");
+    return '{';
 }
 "}" {
     Console::Log("Separator: }");
+    return '}';
 }
 "#[" {
     Console::Log("AttributeOpen: #[");
@@ -322,6 +331,8 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 {VARIABLE} {
     Console::Log("Variable: " + string(yytext));
+    yylval.str = new std::string(yytext + 1);
+    return T_VARIABLE;
 }
 \$[0-9][A-Za-z0-9_]* {
     Console::Error("Invalid variable name '" + string(yytext) + "' at line " + std::to_string(yylineno));
@@ -332,16 +343,22 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 {FLOAT} {
     double value = std::strtod(stripUnderscores(yytext).c_str(), nullptr);
     Console::Log("Float: " + formatDouble(value));
+    yylval.dval = value;
+    return T_DNUMBER;
 }
 {INT_HEX} {
     std::string int_str = stripUnderscores(yytext).substr(2);
     if (isBigInteger(int_str, 16)) {
         double value = calcBigInteger(int_str, 16);
         Console::Log("Float: " + formatDouble(value));
+        yylval.dval = value;
+        return T_DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 16);
         Console::Log("Integer (hex): " + std::to_string(value));
+        yylval.ival = value;
+        return T_LNUMBER;
     }
 }
 {INT_BIN} {
@@ -349,10 +366,14 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     if (isBigInteger(int_str, 2)) {
         double value = calcBigInteger(int_str, 2);
         Console::Log("Float: " + formatDouble(value));
+        yylval.dval = value;
+        return T_DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 2);
         Console::Log("Integer (binary): " + std::to_string(value));
+        yylval.ival = value;
+        return T_LNUMBER;
     }
 }
 {INT_OCT_NEW} {
@@ -360,10 +381,14 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     if (isBigInteger(int_str, 8)) {
         double value = calcBigInteger(int_str, 8);
         Console::Log("Float: " + formatDouble(value));
+        yylval.dval = value;
+        return T_DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 8);
         Console::Log("Integer (octal): " + std::to_string(value));
+        yylval.ival = value;
+        return T_LNUMBER;
     }
 }
 {INT_OCT_OLD} {
@@ -371,10 +396,14 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     if (isBigInteger(int_str, 8)) {
         double value = calcBigInteger(int_str, 8);
         Console::Log("Float: " + formatDouble(value));
+        yylval.dval = value;
+        return T_DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 8);
         Console::Log("Integer (octal): " + std::to_string(value));
+        yylval.ival = value;
+        return T_LNUMBER;
     }
 }
 {INTEGER} {
@@ -382,10 +411,14 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     if (isBigInteger(int_str, 10)) {
         double value = calcBigInteger(int_str, 10);
         Console::Log("Float: " + formatDouble(value));
+        yylval.dval = value;
+        return T_DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 10);
         Console::Log("Integer: " + std::to_string(value));
+        yylval.ival = value;
+        return T_LNUMBER;
     }
 }
     /* число с мусорным хвостом всегда длиннее корректного числа на том же месте */
