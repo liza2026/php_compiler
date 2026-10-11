@@ -140,73 +140,73 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 
 
     /* Ключевые слова */
-abstract        { Console::Log("Keyword: abstract"); }
+abstract        { Console::Log("Keyword: abstract"); return T_ABSTRACT; }
 array           { Console::Log("Keyword: array"); return T_ARRAY; }
-as              { Console::Log("Keyword: as"); }
-break           { Console::Log("Keyword: break"); }
-callable        { Console::Log("Keyword: callable"); }
-case            { Console::Log("Keyword: case"); }
-catch           { Console::Log("Keyword: catch"); }
-class           { Console::Log("Keyword: class"); }
-clone           { Console::Log("Keyword: clone"); }
-const           { Console::Log("Keyword: const"); }
-continue        { Console::Log("Keyword: continue"); }
-declare         { Console::Log("Keyword: declare"); }
-default         { Console::Log("Keyword: default"); }
-do              { Console::Log("Keyword: do"); }
+as              { Console::Log("Keyword: as"); return T_AS; }
+break           { Console::Log("Keyword: break"); return T_BREAK; }
+callable        { Console::Log("Keyword: callable"); return T_CALLABLE; }
+case            { Console::Log("Keyword: case"); return T_CASE; }
+catch           { Console::Log("Keyword: catch"); return T_CATCH; }
+class           { Console::Log("Keyword: class"); return T_CLASS; }
+clone           { Console::Log("Keyword: clone"); return T_CLONE; }
+const           { Console::Log("Keyword: const"); return T_CONST; }
+continue        { Console::Log("Keyword: continue"); return T_CONTINUE; }
+declare         { Console::Log("Keyword: declare"); return T_DECLARE; }
+default         { Console::Log("Keyword: default"); return T_DEFAULT; }
+do              { Console::Log("Keyword: do"); return T_DO; }
 echo            { Console::Log("Keyword: echo"); return T_ECHO; }
-else            { Console::Log("Keyword: else"); }
-elseif          { Console::Log("Keyword: elseif"); }
-empty           { Console::Log("Keyword: empty"); }
-enddeclare      { Console::Log("Keyword: enddeclare"); }
-endfor          { Console::Log("Keyword: endfor"); }
-endforeach      { Console::Log("Keyword: endforeach"); }
-endif           { Console::Log("Keyword: endif"); }
-endswitch       { Console::Log("Keyword: endswitch"); }
-endwhile        { Console::Log("Keyword: endwhile"); }
-enum            { Console::Log("Keyword: enum"); }
-eval            { Console::Log("Keyword: eval"); }
-exit|die        { Console::Log("Keyword: exit"); }
-extends         { Console::Log("Keyword: extends"); }
-final           { Console::Log("Keyword: final"); }
-finally         { Console::Log("Keyword: finally"); }
-fn              { Console::Log("Keyword: fn"); }
-for             { Console::Log("Keyword: for"); }
-foreach         { Console::Log("Keyword: foreach"); }
-function        { Console::Log("Keyword: function"); }
-global          { Console::Log("Keyword: global"); }
-goto            { Console::Log("Keyword: goto"); }
-if              { Console::Log("Keyword: if"); }
-implements      { Console::Log("Keyword: implements"); }
-include         { Console::Log("Keyword: include"); }
-include_once    { Console::Log("Keyword: include_once"); }
-instanceof      { Console::Log("Keyword: instanceof"); }
-insteadof       { Console::Log("Keyword: insteadof"); }
-interface       { Console::Log("Keyword: interface"); }
-isset           { Console::Log("Keyword: isset"); }
-list            { Console::Log("Keyword: list"); }
-match           { Console::Log("Keyword: match"); }
-namespace       { Console::Log("Keyword: namespace"); }
-new             { Console::Log("Keyword: new"); }
-print           { Console::Log("Keyword: print"); }
-private         { Console::Log("Keyword: private"); }
-protected       { Console::Log("Keyword: protected"); }
-public          { Console::Log("Keyword: public"); }
-readonly        { Console::Log("Keyword: readonly"); }
-require         { Console::Log("Keyword: require"); }
-require_once    { Console::Log("Keyword: require_once"); }
-return          { Console::Log("Keyword: return"); }
-static          { Console::Log("Keyword: static"); }
-switch          { Console::Log("Keyword: switch"); }
-throw           { Console::Log("Keyword: throw"); }
-trait           { Console::Log("Keyword: trait"); }
-try             { Console::Log("Keyword: try"); }
-unset           { Console::Log("Keyword: unset"); }
-use             { Console::Log("Keyword: use"); }
-var             { Console::Log("Keyword: var"); }
-while           { Console::Log("Keyword: while"); }
-yield           { Console::Log("Keyword: yield"); }
-yield[ \t\r\n]+from { Console::Log("Keyword: yield from"); }
+else            { Console::Log("Keyword: else"); return T_ELSE; }
+elseif          { Console::Log("Keyword: elseif"); return T_ELSEIF; }
+empty           { Console::Log("Keyword: empty"); return T_EMPTY; }
+enddeclare      { Console::Log("Keyword: enddeclare"); return T_ENDDECLARE; }
+endfor          { Console::Log("Keyword: endfor"); return T_ENDFOR; }
+endforeach      { Console::Log("Keyword: endforeach"); return T_ENDFOREACH; }
+endif           { Console::Log("Keyword: endif"); return T_ENDIF; }
+endswitch       { Console::Log("Keyword: endswitch"); return T_ENDSWITCH; }
+endwhile        { Console::Log("Keyword: endwhile"); return T_ENDWHILE; }
+enum            { Console::Log("Keyword: enum"); return T_ENUM; }
+eval            { Console::Log("Keyword: eval"); return T_EVAL; }
+exit|die        { Console::Log("Keyword: exit"); return T_EXIT; }
+extends         { Console::Log("Keyword: extends"); return T_EXTENDS; }
+final           { Console::Log("Keyword: final"); return T_FINAL; }
+finally         { Console::Log("Keyword: finally"); return T_FINALLY; }
+fn              { Console::Log("Keyword: fn"); return T_FN; }
+for             { Console::Log("Keyword: for"); return T_FOR; }
+foreach         { Console::Log("Keyword: foreach"); return T_FOREACH; }
+function        { Console::Log("Keyword: function"); return T_FUNCTION; }
+global          { Console::Log("Keyword: global"); return T_GLOBAL; }
+goto            { Console::Log("Keyword: goto"); return T_GOTO; }
+if              { Console::Log("Keyword: if"); return T_IF; }
+implements      { Console::Log("Keyword: implements"); return T_IMPLEMENTS; }
+include         { Console::Log("Keyword: include"); return T_INCLUDE; }
+include_once    { Console::Log("Keyword: include_once"); return T_INCLUDE_ONCE; }
+instanceof      { Console::Log("Keyword: instanceof"); return T_INSTANCEOF; }
+insteadof       { Console::Log("Keyword: insteadof"); return T_INSTEADOF; }
+interface       { Console::Log("Keyword: interface"); return T_INTERFACE; }
+isset           { Console::Log("Keyword: isset"); return T_ISSET; }
+list            { Console::Log("Keyword: list"); return T_LIST; }
+match           { Console::Log("Keyword: match"); return T_MATCH; }
+namespace       { Console::Log("Keyword: namespace"); return T_NAMESPACE; }
+new             { Console::Log("Keyword: new"); return T_NEW; }
+print           { Console::Log("Keyword: print"); return T_PRINT; }
+private         { Console::Log("Keyword: private"); return T_PRIVATE; }
+protected       { Console::Log("Keyword: protected"); return T_PROTECTED; }
+public          { Console::Log("Keyword: public"); return T_PUBLIC; }
+readonly        { Console::Log("Keyword: readonly"); return T_READONLY; }
+require         { Console::Log("Keyword: require"); return T_REQUIRE; }
+require_once    { Console::Log("Keyword: require_once"); return T_REQUIRE_ONCE; }
+return          { Console::Log("Keyword: return"); return T_RETURN; }
+static          { Console::Log("Keyword: static"); return T_STATIC; }
+switch          { Console::Log("Keyword: switch"); return T_SWITCH; }
+throw           { Console::Log("Keyword: throw"); return T_THROW; }
+trait           { Console::Log("Keyword: trait"); return T_TRAIT; }
+try             { Console::Log("Keyword: try"); return T_TRY; }
+unset           { Console::Log("Keyword: unset"); return T_UNSET; }
+use             { Console::Log("Keyword: use"); return T_USE; }
+var             { Console::Log("Keyword: var"); return T_VAR; }
+while           { Console::Log("Keyword: while"); return T_WHILE; }
+yield           { Console::Log("Keyword: yield"); return T_YIELD; }
+yield[ \t\r\n]+from { Console::Log("Keyword: yield from"); return T_YIELD_FROM; }
 
     /* Ключевые слова, являющиеся операторами */
 and             { Console::Log("Operator: and"); return T_LOGICAL_AND; }
@@ -219,15 +219,17 @@ false           { Console::Log("Boolean: false"); return T_FALSE; }
 null            { Console::Log("Null: null"); return T_NULL; }
 __(line|file|dir|function|class|method|namespace|trait)__ {
     Console::Log("MagicConstant: " + string(yytext));
+    yylval.str = new std::string(yytext);
+    return T_MAGIC_CONST;
 }
 
     /* Приведения типов: (int) (string) ... */
-"("[ \t]*(int|integer)[ \t]*")"     { Console::Log("Cast: (int)"); }
-"("[ \t]*(float|double)[ \t]*")"    { Console::Log("Cast: (float)"); }
-"("[ \t]*(string|binary)[ \t]*")"   { Console::Log("Cast: (string)"); }
-"("[ \t]*array[ \t]*")"             { Console::Log("Cast: (array)"); }
-"("[ \t]*object[ \t]*")"            { Console::Log("Cast: (object)"); }
-"("[ \t]*(bool|boolean)[ \t]*")"    { Console::Log("Cast: (bool)"); }
+"("[ \t]*(int|integer)[ \t]*")"     { Console::Log("Cast: (int)"); return T_INT_CAST; }
+"("[ \t]*(float|double)[ \t]*")"    { Console::Log("Cast: (float)"); return T_DOUBLE_CAST; }
+"("[ \t]*(string|binary)[ \t]*")"   { Console::Log("Cast: (string)"); return T_STRING_CAST; }
+"("[ \t]*array[ \t]*")"             { Console::Log("Cast: (array)"); return T_ARRAY_CAST; }
+"("[ \t]*object[ \t]*")"            { Console::Log("Cast: (object)"); return T_OBJECT_CAST; }
+"("[ \t]*(bool|boolean)[ \t]*")"    { Console::Log("Cast: (bool)"); return T_BOOL_CAST; }
 
 
     /* Операторы */
@@ -292,14 +294,17 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 "->" {
     Console::Log("Operator: ->");
     yy_push_state(MEMBER);
+    return T_OBJECT_OPERATOR;
 }
 "?->" {
     Console::Log("Operator: ?->");
     yy_push_state(MEMBER);
+    return T_NULLSAFE_OBJECT_OPERATOR;
 }
 "::" {
     Console::Log("Operator: ::");
     yy_push_state(MEMBER);
+    return T_DOUBLE_COLON;
 }
 
 <MEMBER>{LABEL} {
@@ -320,15 +325,23 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     /* ключевые слова выше: при равной длине побеждает правило, написанное раньше */
 {LABEL} {
     Console::Log("Identifier: " + string(yytext));
+    yylval.str = new std::string(yytext);
+    return T_STRING;
 }
 {NAME_RELATIVE} {
     Console::Log("Identifier (relative): " + string(yytext));
+    yylval.str = new std::string(yytext);
+    return T_NAME_RELATIVE;
 }
 {NAME_QUALIFIED} {
     Console::Log("Identifier (qualified): " + string(yytext));
+    yylval.str = new std::string(yytext);
+    return T_NAME_QUALIFIED;
 }
 {NAME_FULLY_QUALIFIED} {
     Console::Log("Identifier (fully qualified): " + string(yytext));
+    yylval.str = new std::string(yytext);
+    return T_NAME_FULLY_QUALIFIED;
 }
 {VARIABLE} {
     Console::Log("Variable: " + string(yytext));
