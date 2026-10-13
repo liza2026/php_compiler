@@ -22,7 +22,7 @@
 
     std::string formatDouble(double value);
     std::string stripUnderscores(const std::string& text);
-    int flushStringFragment(Buffer stringBuf);
+    int flushStringFragment(Buffer& stringBuf);
     bool isBigInteger(const std::string& digits, int base);
     double calcBigInteger(const std::string& digits, int base);
 %}
@@ -729,7 +729,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 %%
 
 /* отдаёт накопленный текст строки как токен-фрагмент */
-int flushStringFragment(Buffer stringBuf) {
+int flushStringFragment(Buffer& stringBuf) {
     Console::Log("StringFragment: \"" + stringBuf.current() + "\"");
     yylval.str = new std::string(stringBuf.current());
     stringBuf.reset();
