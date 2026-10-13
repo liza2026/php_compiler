@@ -22,6 +22,7 @@
 
     std::string formatDouble(double value);
     std::string stripUnderscores(const std::string& text);
+    int flushStringFragment(Buffer stringBuf);
     bool isBigInteger(const std::string& digits, int base);
     double calcBigInteger(const std::string& digits, int base);
 %}
@@ -38,7 +39,8 @@
    STRING_S      - '...'
    STRING_D      - "..."
    INTERP_INDEX  - [ключ] после $var внутри "..."
-   INTERP_PROP   - ->свойство после $var внутри "..." */
+   INTERP_PROP   - ->свойство после $var внутри "..."
+   VARNAME       - имя сразу после ${ (если дальше [ или }) - токен T_STRING_VARNAME */
 
 %s IN_CURLY
 %x NOPHP
@@ -49,6 +51,7 @@
 %x STRING_D
 %x INTERP_INDEX
 %x INTERP_PROP
+%x VARNAME
 
 
 /* Макросы */
@@ -113,6 +116,7 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 <IN_CURLY>"?>" {
     yyless(1);
     Console::Log("Operator: ?");
+    return '?';
 }
 
 "?>" {
@@ -126,15 +130,18 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 <IN_CURLY>"{" {
     Console::Log("Separator: {");
     exprDepth.back()++;
+    return '{';
 }
 <IN_CURLY>"}" {
     if (exprDepth.back() > 0) {
         exprDepth.back()--;
         Console::Log("Separator: }");
+        return '}';
     } else {
         Console::Log("InterpolationEnd: }");
         exprDepth.pop_back();
         yy_pop_state();
+        return '}';
     }
 }
 
@@ -276,6 +283,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 "$" {
     Console::Log("Dollar: $");
+    return '$';
 }
 "{" {
     Console::Log("Separator: {");
@@ -287,6 +295,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 "#[" {
     Console::Log("AttributeOpen: #[");
+    return T_ATTRIBUTE;
 }
 
 
@@ -309,14 +318,16 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 
 <MEMBER>{LABEL} {
     Console::Log("Identifier: " + string(yytext));
+    yylval.str = new std::string(yytext);
     yy_pop_state();
+    return T_STRING;
 }
 <MEMBER>[ \t\r\n]+ { }
 <MEMBER>. {
     yyless(0);
     yy_pop_state();
 }
-<MEMBER><<EOF>> {
+<MEMBER,VARNAME><<EOF>> {
     yy_pop_state();
 }
 
@@ -512,15 +523,16 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     Console::Log("StringStart (line " + std::to_string(yylineno) + ")");
     stringBuf.reset();
     yy_push_state(STRING_D);
+    return '"';
 }
 <STRING_D>\" {
     if (!stringBuf.current().empty()) {
         yyless(0);
-        Console::Log("StringFragment: \"" + stringBuf.current() + "\"");
-        stringBuf.reset();
+        return flushStringFragment(stringBuf);
     } else {
         Console::Log("StringEnd");
         yy_pop_state();
+        return '"';
     }
 }
 
@@ -563,58 +575,82 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 <STRING_D>{VARIABLE}/"[" {
     if (!stringBuf.current().empty()) {
         yyless(0);
-        Console::Log("StringFragment: \"" + stringBuf.current() + "\"");
-        stringBuf.reset();
+        return flushStringFragment(stringBuf);
     } else {
         Console::Log("Variable: " + string(yytext));
         yy_push_state(INTERP_INDEX);
+        yylval.str = new std::string(yytext + 1);
+        return T_VARIABLE;
     }
 }
 <STRING_D>{VARIABLE}/"->"[A-Za-z_\x80-\xff] {
     if (!stringBuf.current().empty()) {
         yyless(0);
-        Console::Log("StringFragment: \"" + stringBuf.current() + "\"");
-        stringBuf.reset();
+        return flushStringFragment(stringBuf);
     } else {
         Console::Log("Variable: " + string(yytext));
         yy_push_state(INTERP_PROP);
+        yylval.str = new std::string(yytext + 1);
+        return T_VARIABLE;
     }
 }
 <STRING_D>{VARIABLE}/"?->"[A-Za-z_\x80-\xff] {
     if (!stringBuf.current().empty()) {
         yyless(0);
-        Console::Log("StringFragment: \"" + stringBuf.current() + "\"");
-        stringBuf.reset();
+        return flushStringFragment(stringBuf);
     } else {
         Console::Log("Variable: " + string(yytext));
         yy_push_state(INTERP_PROP);
+        yylval.str = new std::string(yytext + 1);
+        return T_VARIABLE;
     }
 }
 <STRING_D>{VARIABLE} {
     if (!stringBuf.current().empty()) {
         yyless(0);
-        Console::Log("StringFragment: \"" + stringBuf.current() + "\"");
-        stringBuf.reset();
+        return flushStringFragment(stringBuf);
     } else {
         Console::Log("Variable: " + string(yytext));
+        yylval.str = new std::string(yytext + 1);
+        return T_VARIABLE;
     }
 }
 
 <INTERP_INDEX>"[" {
     Console::Log("Separator: [");
+    return '[';
 }
 <INTERP_INDEX>{LABEL} {
     Console::Log("Identifier: " + string(yytext));
+    yylval.str = new std::string(yytext);
+    return T_STRING;
 }
-<INTERP_INDEX>-?{INTEGER} {
-    Console::Log("Integer: " + string(yytext));
+<INTERP_INDEX>"-" {
+    Console::Log("Operator: -");
+    return '-';
+}
+<INTERP_INDEX>{INTEGER} {
+    std::string int_str = stripUnderscores(yytext);
+    if (isBigInteger(int_str, 10)) {
+        // как в PHP: слишком большое число в "$a[...]" - это строковый ключ
+        Console::Log("Identifier: " + string(yytext));
+        yylval.str = new std::string(yytext);
+        return T_STRING;
+    }
+    long long value = std::strtoll(int_str.c_str(), nullptr, 10);
+    Console::Log("Integer: " + std::to_string(value));
+    yylval.ival = value;
+    return T_LNUMBER;
 }
 <INTERP_INDEX>{VARIABLE} {
     Console::Log("Variable: " + string(yytext));
+    yylval.str = new std::string(yytext + 1);
+    return T_VARIABLE;
 }
 <INTERP_INDEX>"]" {
     Console::Log("Separator: ]");
     yy_pop_state();
+    return ']';
 }
 <INTERP_INDEX>(.|\n) {
     Console::Error("Unexpected symbol '" + string(yytext) + "' in string offset at line " + std::to_string(yylineno));
@@ -623,37 +659,54 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 
 <INTERP_PROP>"->" {
     Console::Log("Operator: ->");
+    return T_OBJECT_OPERATOR;
 }
 <INTERP_PROP>"?->" {
     Console::Log("Operator: ?->");
+    return T_NULLSAFE_OBJECT_OPERATOR;
 }
 <INTERP_PROP>{LABEL} {
     Console::Log("Identifier: " + string(yytext));
+    yylval.str = new std::string(yytext);
     yy_pop_state();
+    return T_STRING;
 }
 
     /* Сложные вставки: дальше читаем обычный PHP-код до парной } */
 <STRING_D>"{"/"$" {
     if (!stringBuf.current().empty()) {
         yyless(0);
-        Console::Log("StringFragment: \"" + stringBuf.current() + "\"");
-        stringBuf.reset();
+        return flushStringFragment(stringBuf);
     } else {
         Console::Log("InterpolationStart: {");
         exprDepth.push_back(0);
         yy_push_state(IN_CURLY);
+        return T_CURLY_OPEN;
     }
 }
 <STRING_D>"${" {
     if (!stringBuf.current().empty()) {
         yyless(0);
-        Console::Log("StringFragment: \"" + stringBuf.current() + "\"");
-        stringBuf.reset();
+        return flushStringFragment(stringBuf);
     } else {
         Console::Log("InterpolationStart: ${");
         exprDepth.push_back(0);
         yy_push_state(IN_CURLY);
+        yy_push_state(VARNAME);   // ${имя} и ${имя[...]} - имя это T_STRING_VARNAME
+        return T_DOLLAR_OPEN_CURLY_BRACES;
     }
+}
+
+    /* сразу после ${ : имя, за которым идёт [ или } */
+<VARNAME>{LABEL}/[\[}] {
+    Console::Log("Identifier: " + string(yytext));
+    yylval.str = new std::string(yytext);
+    yy_pop_state();
+    return T_STRING_VARNAME;
+}
+<VARNAME>(.|\n) {
+    yyless(0);
+    yy_pop_state();
 }
 
 <STRING_D,INTERP_INDEX,INTERP_PROP><<EOF>> {
@@ -674,6 +727,14 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 
 %%
+
+/* отдаёт накопленный текст строки как токен-фрагмент */
+int flushStringFragment(Buffer stringBuf) {
+    Console::Log("StringFragment: \"" + stringBuf.current() + "\"");
+    yylval.str = new std::string(stringBuf.current());
+    stringBuf.reset();
+    return T_ENCAPSED_AND_WHITESPACE;
+}
 
 /* %.14g даёт компактную запись*/
 std::string formatDouble(double value) {
