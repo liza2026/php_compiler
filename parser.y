@@ -61,6 +61,7 @@ void yyerror(const char* msg);
 
 
 /* Приоритеты */
+%precedence T_THROW T_FN
 %left  T_LOGICAL_OR
 %left  T_LOGICAL_XOR
 %left  T_LOGICAL_AND
@@ -80,6 +81,7 @@ void yyerror(const char* msg);
 %left  '+' '-'
 %left  '*' '/' '%'
 %right '!'
+%nonassoc T_INSTANCEOF
 %precedence T_UNARY
 %right T_POW
 
@@ -103,7 +105,7 @@ stmt_list : %empty
 stmt : ';'
      | expr ';'
      | T_INLINE_HTML
-     | '{' stmt_list '}'
+     | block
      | echo_stmt
      | if_stmt
      | switch_stmt
@@ -115,18 +117,46 @@ stmt : ';'
      | T_CONTINUE optional_expr ';'
      | T_RETURN optional_expr ';'
      | function_declaration
+     | try_stmt
+     | class_declaration
      ;
+
+block : '{' stmt_list '}'
+      ;
 
 /* Переменные и доступ к элементу массива */
 
+/* $a, $a[0], $o->p, $o->m(), $f(1), Foo::$x, Foo::bar() */
 variable : T_VARIABLE
-         | variable '[' expr ']'
+         | dereferenceable '[' expr ']'
+         | dereferenceable T_OBJECT_OPERATOR member_name
+         | dereferenceable T_NULLSAFE_OBJECT_OPERATOR member_name
+         | dereferenceable argument_list
+         | class_ref T_DOUBLE_COLON T_VARIABLE
+         | class_ref T_DOUBLE_COLON T_STRING argument_list
          ;
 
-/* то, чему можно присвоить значение */
+/* то, к чему можно применить [ ], -> и ( ): переменная, (выражение), foo(), new Foo() */
+dereferenceable : variable
+                | '(' expr ')'
+                | function_call
+                | new_expr
+                ;
+
+/* то, чему можно присвоить значение: $a, $a[0], $a[], $o->p */
 lvalue : variable
-       | variable '[' ']'
+       | dereferenceable '[' ']'
        ;
+
+/* имя свойства или метода после -> и ?-> */
+member_name : T_STRING
+            | T_VARIABLE
+            ;
+
+/* слева от :: стоит имя класса или static (parent, self - обычные имена) */
+class_ref : name
+          | T_STATIC
+          ;
 
 /* Выражения */
 
@@ -138,18 +168,23 @@ expr : T_LNUMBER
      | T_FALSE
      | T_NULL
      | double_quoted_string
-     | variable
+     | dereferenceable
      | name
      | array_literal
-     | '(' expr ')'
      | assignment
      | incdec
      | unary
      | binary
-     | function_call
      | conditional
      | match
      | T_PRINT expr %prec T_LOGICAL_AND
+     | T_THROW expr
+     | T_NEW class_ref
+     | expr T_INSTANCEOF class_ref
+     | class_ref T_DOUBLE_COLON T_STRING
+     | class_ref T_DOUBLE_COLON T_CLASS
+     | anonymous_function
+     | arrow_function
      ;
 
 assignment : lvalue '='              expr
@@ -379,8 +414,16 @@ non_empty_parameter_list : parameter
                          ;
 
 /* [тип] [&] [...] $имя [= значение по умолчанию] */
-parameter : optional_type is_reference is_variadic T_VARIABLE
-          | optional_type is_reference is_variadic T_VARIABLE '=' expr
+parameter : promotion optional_type is_reference is_variadic T_VARIABLE
+          | promotion optional_type is_reference is_variadic T_VARIABLE '=' expr
+          ;
+
+/* public/private/protected/readonly перед параметром конструктора объявляет свойство */
+promotion : %empty
+          | visibility
+          | T_READONLY
+          | visibility T_READONLY
+          | T_READONLY visibility
           ;
 
 is_reference : %empty
@@ -397,6 +440,7 @@ optional_type : %empty
 
 return_type : %empty
             | ':' type_expr
+            | ':' T_STATIC
             ;
 
 /* int, ?string, int|float */
@@ -412,7 +456,6 @@ union_type : type '|' type
 /* null, false, true - отдельные ключевые слова, в объединении: int|false, string|null */
 type : T_ARRAY
      | T_CALLABLE
-     | T_STATIC
      | T_NULL
      | T_FALSE
      | T_TRUE
@@ -436,6 +479,190 @@ non_empty_argument_list : argument
 argument : expr
          | T_STRING ':' expr
          | T_ELLIPSIS expr
+         ;
+
+/* Исключения: try / catch / finally, throw  */
+
+/* throw - выражение, поэтому работает и как оператор, и внутри ?? и т. п. */
+try_stmt : T_TRY block catch_list
+         | T_TRY block catch_list finally_clause
+         | T_TRY block finally_clause
+         ;
+
+catch_list : catch_clause
+           | catch_list catch_clause
+           ;
+
+/* catch (A | B $e), catch (A) - переменная необязательна */
+catch_clause : T_CATCH '(' catch_types optional_catch_var ')' block
+             ;
+
+catch_types : name
+            | catch_types '|' name
+            ;
+
+optional_catch_var : %empty
+                   | T_VARIABLE
+                   ;
+
+finally_clause : T_FINALLY block
+               ;
+
+/* Классы, интерфейсы, свойства, методы, наследование */
+
+class_declaration : class_modifiers T_CLASS T_STRING extends_clause implements_clause '{' class_member_list '}'
+                  | T_INTERFACE T_STRING interface_extends_clause '{' interface_member_list '}'
+                  ;
+
+class_modifiers : %empty
+                | class_modifiers class_modifier
+                ;
+
+class_modifier : T_ABSTRACT
+               | T_FINAL
+               | T_READONLY
+               ;
+
+extends_clause : %empty
+               | T_EXTENDS name
+               ;
+
+implements_clause : %empty
+                  | T_IMPLEMENTS name_list
+                  ;
+
+/* interface A extends B, C */
+interface_extends_clause : %empty
+                         | T_EXTENDS name_list
+                         ;
+
+name_list : name
+          | name_list ',' name
+          ;
+
+class_member_list : %empty
+                  | class_member_list class_member
+                  ;
+
+class_member : property_declaration
+             | class_constant_declaration
+             | method_declaration
+             ;
+
+/* в интерфейсе нет свойств: только константы и методы */
+interface_member_list : %empty
+                      | interface_member_list interface_member
+                      ;
+
+interface_member : class_constant_declaration
+                 | method_declaration
+                 ;
+
+/* public int $x = 0, $y;   var $z;   static $count; */
+property_declaration : member_modifiers optional_type property_list ';'
+                     | T_VAR optional_type property_list ';'
+                     ;
+
+property_list : property_item
+              | property_list ',' property_item
+              ;
+
+property_item : T_VARIABLE
+              | T_VARIABLE '=' expr
+              ;
+
+/* const A = 1, B = 2;   private const C = 3; */
+class_constant_declaration : member_modifiers_opt T_CONST const_list ';'
+                           ;
+
+const_list : const_item
+           | const_list ',' const_item
+           ;
+
+const_item : identifier '=' expr
+           ;
+
+/* тело ';' нужно абстрактным методам и методам интерфейсов */
+method_declaration : member_modifiers_opt T_FUNCTION returns_ref identifier '(' parameter_list ')' return_type method_body
+                   ;
+
+method_body : ';'
+            | block
+            ;
+
+/* Контроль доступа и другие модификаторы членов класса */
+
+/* имя метода или константы класса: обычное слово или служебное (function private(), const list = 1) */
+identifier : T_STRING
+           | T_ECHO | T_ARRAY | T_TRUE | T_FALSE | T_NULL
+           | T_ABSTRACT | T_AS | T_BREAK | T_CALLABLE | T_CASE | T_CATCH | T_CLASS | T_CLONE
+           | T_CONST | T_CONTINUE | T_DECLARE | T_DEFAULT | T_DO | T_ELSE | T_ELSEIF | T_EMPTY
+           | T_ENDDECLARE | T_ENDFOR | T_ENDFOREACH | T_ENDIF | T_ENDSWITCH | T_ENDWHILE
+           | T_ENUM | T_EVAL | T_EXIT | T_EXTENDS | T_FINAL | T_FINALLY | T_FN | T_FOR | T_FOREACH
+           | T_FUNCTION | T_GLOBAL | T_GOTO | T_IF | T_IMPLEMENTS | T_INCLUDE | T_INCLUDE_ONCE
+           | T_INSTANCEOF | T_INSTEADOF | T_INTERFACE | T_ISSET | T_LIST | T_MATCH | T_NAMESPACE
+           | T_NEW | T_PRINT | T_PRIVATE | T_PROTECTED | T_PUBLIC | T_READONLY | T_REQUIRE
+           | T_REQUIRE_ONCE | T_RETURN | T_STATIC | T_SWITCH | T_THROW | T_TRAIT | T_TRY
+           | T_UNSET | T_USE | T_VAR | T_WHILE | T_YIELD | T_YIELD_FROM
+           | T_LOGICAL_AND | T_LOGICAL_OR | T_LOGICAL_XOR
+           ;
+
+member_modifiers_opt : %empty
+                     | member_modifiers
+                     ;
+
+member_modifiers : plain_modifier_list
+                 | visibility plain_modifiers
+                 | plain_modifier_list visibility plain_modifiers
+                 ;
+
+plain_modifier_list : plain_modifier
+                    | plain_modifier_list plain_modifier
+                    ;
+
+plain_modifiers : %empty
+                | plain_modifiers plain_modifier
+                ;
+
+plain_modifier : T_STATIC
+               | T_ABSTRACT
+               | T_FINAL
+               | T_READONLY
+               ;
+
+visibility : T_PUBLIC
+           | T_PROTECTED
+           | T_PRIVATE
+           ;
+
+/* Замыкания: function() use (...) {...}, fn() => ... */
+
+anonymous_function : T_FUNCTION returns_ref '(' parameter_list ')' lexical_vars return_type block
+                   | T_STATIC T_FUNCTION returns_ref '(' parameter_list ')' lexical_vars return_type block
+                   ;
+
+/* тело - одно выражение, а не блок */
+arrow_function : T_FN returns_ref '(' parameter_list ')' return_type T_DOUBLE_ARROW expr %prec T_FN
+               | T_STATIC T_FN returns_ref '(' parameter_list ')' return_type T_DOUBLE_ARROW expr %prec T_FN
+               ;
+
+/* use ($a, &$b) - захваченные переменные; пустой список use () недопустим */
+lexical_vars : %empty
+             | T_USE '(' lexical_var_list possible_comma ')'
+             ;
+
+lexical_var_list : lexical_var
+                 | lexical_var_list ',' lexical_var
+                 ;
+
+lexical_var : T_VARIABLE
+            | '&' T_VARIABLE
+            ;
+
+/* Создание объекта */
+
+/* new Foo(1, 2);  new static;  (без скобок: new Foo) */
+new_expr : T_NEW class_ref argument_list
          ;
 
 /* Общие вспомогательные правила */
