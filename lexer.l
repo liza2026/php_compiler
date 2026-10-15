@@ -361,6 +361,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 \$[0-9][A-Za-z0-9_]* {
     Console::Error("Invalid variable name '" + string(yytext) + "' at line " + std::to_string(yylineno));
+    return T_ERROR;
 }
 
 
@@ -449,6 +450,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     /* число с мусорным хвостом всегда длиннее корректного числа на том же месте */
 ({NUMBER_ANY})[A-Za-z0-9_]+ {
     Console::Error("Invalid numeric literal '" + string(yytext) + "' at line " + std::to_string(yylineno));
+    return T_ERROR;
 }
 
 
@@ -487,7 +489,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 <COMMENT><<EOF>> {
     Console::Error("Unterminated block comment starting at line " + std::to_string(commentBuf.getStartLine()));
-    yyterminate();
+    return T_ERROR;
 }
 
 
@@ -512,7 +514,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 <STRING_S><<EOF>> {
     Console::Error("Unterminated single-quoted string starting at line " + std::to_string(stringBuf.getStartLine()));
-    yyterminate();
+    return T_ERROR;
 }
 
 
@@ -654,7 +656,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 <INTERP_INDEX>(.|\n) {
     Console::Error("Unexpected symbol '" + string(yytext) + "' in string offset at line " + std::to_string(yylineno));
-    yy_pop_state();
+    return T_ERROR;
 }
 
 <INTERP_PROP>"->" {
@@ -711,11 +713,11 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 
 <STRING_D,INTERP_INDEX,INTERP_PROP><<EOF>> {
     Console::Error("Unterminated double-quoted string at line " + std::to_string(yylineno));
-    yyterminate();
+    return T_ERROR;
 }
 <IN_CURLY><<EOF>> {
     Console::Error("Unterminated {$...} interpolation at line " + std::to_string(yylineno));
-    yyterminate();
+    return T_ERROR;
 }
 
 
@@ -724,6 +726,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 
 .   {
     Console::Error("Unexpected symbol '" + string(yytext) + "' at line " + std::to_string(yylineno));
+    return T_ERROR;
 }
 
 %%

@@ -8,6 +8,7 @@
 %{
 #include <cstdio>
 #include <string>
+#include "core/helpers/Console.h"
 
 int yylex();
 extern int yylineno;
@@ -28,6 +29,7 @@ void yyerror(const char* msg);
 %token <str>  T_ENCAPSED_AND_WHITESPACE T_STRING_VARNAME
 %token <ival> T_LNUMBER
 %token <dval> T_DNUMBER
+%token T_ERROR
 
 /* Ключевые слова и константы */
 %token T_ECHO T_ARRAY T_TRUE T_FALSE T_NULL
@@ -685,5 +687,6 @@ name : T_STRING
 %%
 
 void yyerror(const char* msg) {
+    if (Console::HadErrors()) return;
     fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
 }
