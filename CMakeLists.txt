@@ -21,3 +21,10 @@ add_executable(php_parser
 )
 
 target_include_directories(php_parser PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
+
+
+add_executable(run_tests tests/run_tests.cpp)
+add_dependencies(run_tests php_parser)
+target_compile_definitions(run_tests PRIVATE
+        PARSER_EXE="$<TARGET_FILE:php_parser>"
+        TESTS_DIR="${CMAKE_SOURCE_DIR}/tests/parser")
