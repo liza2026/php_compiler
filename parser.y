@@ -408,18 +408,25 @@ returns_ref : %empty
             | '&'
             ;
 
+/* ...$rest может быть только последним параметром */
 parameter_list : %empty
-               | non_empty_parameter_list possible_comma
+               | regular_parameters possible_comma
+               | regular_parameters ',' variadic_parameter possible_comma
+               | variadic_parameter possible_comma
                ;
 
-non_empty_parameter_list : parameter
-                         | non_empty_parameter_list ',' parameter
-                         ;
+regular_parameters : parameter
+                   | regular_parameters ',' parameter
+                   ;
 
-/* [тип] [&] [...] $имя [= значение по умолчанию] */
-parameter : promotion optional_type is_reference is_variadic T_VARIABLE
-          | promotion optional_type is_reference is_variadic T_VARIABLE '=' expr
+/* [тип] [&] $имя [= значение по умолчанию] */
+parameter : promotion optional_type is_reference T_VARIABLE
+          | promotion optional_type is_reference T_VARIABLE '=' expr
           ;
+
+/* [тип] [&] ...$имя (значения по умолчанию у него быть не может) */
+variadic_parameter : promotion optional_type is_reference T_ELLIPSIS T_VARIABLE
+                   ;
 
 /* public/private/protected/readonly перед параметром конструктора объявляет свойство */
 promotion : %empty
@@ -432,10 +439,6 @@ promotion : %empty
 is_reference : %empty
              | '&'
              ;
-
-is_variadic : %empty
-            | T_ELLIPSIS
-            ;
 
 optional_type : %empty
               | type_expr
