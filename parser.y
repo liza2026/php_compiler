@@ -69,7 +69,8 @@ void yyerror(const char* msg);
 %left  T_LOGICAL_AND
 %right '=' T_PLUS_EQUAL T_MINUS_EQUAL T_MUL_EQUAL T_DIV_EQUAL T_CONCAT_EQUAL T_MOD_EQUAL
 %right T_POW_EQUAL T_AND_EQUAL T_OR_EQUAL T_XOR_EQUAL T_SL_EQUAL T_SR_EQUAL T_COALESCE_EQUAL
-%left  '?' ':'
+%nonassoc '?' ':'
+%left  T_SHORT_TERNARY
 %right T_COALESCE
 %left  T_BOOLEAN_OR
 %left  T_BOOLEAN_AND
@@ -356,7 +357,7 @@ match_arm_conditions : expr
 
 /* a ? b : c, короткий a ?: b, a ?? b */
 conditional : expr '?' expr ':' expr
-            | expr '?' ':' expr
+            | expr '?' ':' expr %prec T_SHORT_TERNARY
             | expr T_COALESCE expr
             ;
 
