@@ -310,14 +310,11 @@ semicolons_e : %empty
 
 /* ветки switch */
 case_list : %empty
-          | case_list T_CASE expr case_separator stmt_list
-          | case_list T_DEFAULT case_separator stmt_list
+          | case_list T_CASE expr ':' stmt_list
+          | case_list T_CASE expr ';' stmt_list
+          | case_list T_DEFAULT ':' stmt_list
+          | case_list T_DEFAULT ';' stmt_list
           ;
-
-/* после case допустимы и ":", и ";" */
-case_separator : ':'
-               | ';'
-               ;
 
 /* ветки match */
 match_arm_list : %empty
