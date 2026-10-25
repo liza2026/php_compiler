@@ -239,10 +239,10 @@ expr : T_LNUMBER
      | expr T_INSTANCEOF class_ref
      | class_ref T_DOUBLE_COLON T_ID
      | class_ref T_DOUBLE_COLON T_CLASS
-     | T_FUNCTION returns_ref '(' parameter_list ')' lexical_vars return_type block
-     | T_STATIC T_FUNCTION returns_ref '(' parameter_list ')' lexical_vars return_type block
-     | T_FN returns_ref '(' parameter_list ')' return_type T_DOUBLE_ARROW expr %prec T_FN
-     | T_STATIC T_FN returns_ref '(' parameter_list ')' return_type T_DOUBLE_ARROW expr %prec T_FN
+     | T_FUNCTION returns_ref '(' parameter_list_e ')' lexical_vars return_type block
+     | T_STATIC T_FUNCTION returns_ref '(' parameter_list_e ')' lexical_vars return_type block
+     | T_FN returns_ref '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
+     | T_STATIC T_FN returns_ref '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
      ;
 
 /* выражения через запятую: echo, заголовок for, условия ветки match */
@@ -378,7 +378,7 @@ foreach_variable : variable
 /* Функции: объявление, параметры, вызов */
 
 /* объявление функции */
-function_declaration : T_FUNCTION returns_ref T_ID '(' parameter_list ')' return_type block
+function_declaration : T_FUNCTION returns_ref T_ID '(' parameter_list_e ')' return_type block
                      ;
 
 /* function &f() - функция возвращает ссылку */
@@ -386,37 +386,22 @@ returns_ref : %empty
             | '&'
             ;
 
-/* список параметров: сначала обязательные, затем со значением по умолчанию, в конце variadic */
-parameter_list : %empty
-               | required_parameters possible_comma
-               | optional_parameters possible_comma
-               | variadic_parameter possible_comma
-               | required_parameters ',' variadic_parameter possible_comma
-               | optional_parameters ',' variadic_parameter possible_comma
+/* список параметров: [модификаторы] [тип] [&] [...]$имя [= значение] */
+parameter_list_e : %empty
+                | parameter_list possible_comma
+                ;
+
+
+parameter_list : parameter
+               | parameter_list ',' parameter
                ;
 
-/* параметры без значения по умолчанию */
-required_parameters : parameter
-                    | required_parameters ',' parameter
-                    ;
-
-/* параметры со значением по умолчанию (перед ними могут быть только обязательные) */
-optional_parameters : default_parameter
-                    | required_parameters ',' default_parameter
-                    | optional_parameters ',' default_parameter
-                    ;
-
-/* [модификаторы] [тип] [&] $имя */
-parameter : modifiers_e type_e is_reference T_VARIABLE
-          ;
-
 /* [модификаторы] [тип] [&] $имя = значение по умолчанию */
-default_parameter : modifiers_e type_e is_reference T_VARIABLE '=' expr
-                  ;
-
-/* [модификаторы] [тип] [&] ...$имя (значения по умолчанию у него быть не может) */
-variadic_parameter : modifiers_e type_e is_reference T_ELLIPSIS T_VARIABLE
-                   ;
+/* [модификаторы] [тип] [&] ...$имя */
+parameter : modifiers_e type_e is_reference T_VARIABLE
+          | modifiers_e type_e is_reference T_VARIABLE '=' expr
+          | modifiers_e type_e is_reference T_ELLIPSIS T_VARIABLE
+          ;
 
 /* необязательный & */
 is_reference : %empty
@@ -565,8 +550,8 @@ const_item : identifier '=' expr
 
 /* объявление метода: с телом {...} или без тела (abstract и методы интерфейса) ;
    конструктор и деструктор - обычные методы с именами __construct и __destruct, не ключевые слова */
-method_declaration : modifiers_e T_FUNCTION returns_ref identifier '(' parameter_list ')' return_type block
-                   | modifiers_e T_FUNCTION returns_ref identifier '(' parameter_list ')' return_type ';'
+method_declaration : modifiers_e T_FUNCTION returns_ref identifier '(' parameter_list_e ')' return_type block
+                   | modifiers_e T_FUNCTION returns_ref identifier '(' parameter_list_e ')' return_type ';'
                    ;
 
 /* имя метода или константы класса: обычное слово или служебное (function private(), const list = 1) */
