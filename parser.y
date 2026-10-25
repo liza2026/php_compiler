@@ -469,19 +469,15 @@ finally_e : %empty
 /* Классы и интерфейсы: свойства, константы, методы, наследование */
 
 /* объявление класса или интерфейса */
-class_declaration : modifiers_e T_CLASS T_ID extends_clause implements_clause '{' class_member_list '}'
-                  | T_INTERFACE T_ID extends_clause '{' class_member_list '}'
+class_declaration : modifiers_e T_CLASS T_ID class_heritage '{' class_member_list '}'
+                  | T_INTERFACE T_ID class_heritage '{' class_member_list '}'
                   ;
 
-/* необязательный extends: у класса одно имя, у интерфейса несколько (проверяется позже) */
-extends_clause : %empty
-               | T_EXTENDS name_list
+/* extends и implements */
+class_heritage : %empty
+               | class_heritage T_EXTENDS name_list
+               | class_heritage T_IMPLEMENTS name_list
                ;
-
-/* необязательный implements */
-implements_clause : %empty
-                  | T_IMPLEMENTS name_list
-                  ;
 
 /* имена через запятую */
 name_list : name
