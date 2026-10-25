@@ -525,12 +525,8 @@ class_constant_declaration : modifiers_e T_CONST const_list ';'
                            ;
 
 /* константы через запятую */
-const_list : const_item
-           | const_list ',' const_item
-           ;
-
-/* константа */
-const_item : identifier '=' expr
+const_list : identifier '=' expr
+           | const_list ',' identifier '=' expr
            ;
 
 /* объявление метода: с телом {...} или без тела (abstract и методы интерфейса) */
