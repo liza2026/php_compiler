@@ -255,6 +255,7 @@ expr_e : %empty
 /* массив */
 array_literal : '[' array_items_opt ']'
               | T_ARRAY '(' array_items_opt ')'
+              | T_LIST  '(' array_items_opt ')'
               ;
 
 /* список элементов массива */
@@ -367,7 +368,6 @@ foreach_body : stmt
 foreach_variable : variable
                  | '&' variable
                  | array_literal
-                 | T_LIST '(' array_items_opt ')'
                  ;
 
 /* Функции: объявление, параметры, вызов */
