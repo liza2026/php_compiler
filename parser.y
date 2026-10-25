@@ -352,13 +352,10 @@ for_exprs : %empty
           ;
 
 /* цикл foreach: $array as $value; $array as $key => $value */
-foreach_stmt : T_FOREACH '(' expr T_AS foreach_variable ')' foreach_body
-             | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' foreach_body
-             ;
-
-/* тело foreach */
-foreach_body : stmt
-             | ':' stmt_list T_ENDFOREACH ';'
+foreach_stmt : T_FOREACH '(' expr T_AS foreach_variable ')' stmt
+             | T_FOREACH '(' expr T_AS foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
+             | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' stmt
+             | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
              ;
 
 /* $v, &$v (по ссылке), [$a, $b] и list($a, $b) (разбор элемента на части) */
