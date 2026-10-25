@@ -264,14 +264,11 @@ array_items_opt : %empty
                 | array_items ','
                 ;
 
-array_items : array_item
-            | array_items ',' array_item
+array_items : expr
+            | expr T_DOUBLE_ARROW expr
+            | array_items ',' expr
+            | array_items ',' expr T_DOUBLE_ARROW expr
             ;
-
-/* элемент массива */
-array_item : expr
-           | expr T_DOUBLE_ARROW expr
-           ;
 
 /* Консоль: echo, print, printf/fgets/readline */
 
