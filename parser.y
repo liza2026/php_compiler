@@ -576,14 +576,10 @@ lexical_vars : %empty
              ;
 
 /* захваченные переменные */
-lexical_var_list : lexical_var
-                 | lexical_var_list ',' lexical_var
+lexical_var_list : is_reference T_VARIABLE
+                 | lexical_var_list ',' is_reference T_VARIABLE
                  ;
 
-/* захваченная переменная */
-lexical_var : T_VARIABLE
-            | '&' T_VARIABLE
-            ;
 
 /* Общие вспомогательные правила */
 
