@@ -234,10 +234,10 @@ expr : T_LNUMBER
      | expr T_INSTANCEOF class_ref
      | class_ref T_DOUBLE_COLON T_ID
      | class_ref T_DOUBLE_COLON T_CLASS
-     | T_FUNCTION returns_ref '(' parameter_list_e ')' lexical_vars return_type block
-     | T_STATIC T_FUNCTION returns_ref '(' parameter_list_e ')' lexical_vars return_type block
-     | T_FN returns_ref '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
-     | T_STATIC T_FN returns_ref '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
+     | T_FUNCTION is_reference '(' parameter_list_e ')' lexical_vars return_type block
+     | T_STATIC T_FUNCTION is_reference '(' parameter_list_e ')' lexical_vars return_type block
+     | T_FN is_reference '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
+     | T_STATIC T_FN is_reference '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
      ;
 
 /* выражения через запятую: echo, заголовок for, условия ветки match */
@@ -373,13 +373,8 @@ foreach_variable : variable
 /* Функции: объявление, параметры, вызов */
 
 /* объявление функции */
-function_declaration : T_FUNCTION returns_ref T_ID '(' parameter_list_e ')' return_type block
+function_declaration : T_FUNCTION is_reference T_ID '(' parameter_list_e ')' return_type block
                      ;
-
-/* function &f() - функция возвращает ссылку */
-returns_ref : %empty
-            | '&'
-            ;
 
 /* список параметров: [модификаторы] [тип] [&] [...]$имя [= значение] */
 parameter_list_e : %empty
@@ -398,7 +393,7 @@ parameter : modifiers_e type_e is_reference T_VARIABLE
           | modifiers_e type_e is_reference T_ELLIPSIS T_VARIABLE
           ;
 
-/* необязательный & */
+/* необязательный &: параметр по ссылке, function &f(), use (&$x) */
 is_reference : %empty
              | '&'
              ;
@@ -538,10 +533,9 @@ const_list : const_item
 const_item : identifier '=' expr
            ;
 
-/* объявление метода: с телом {...} или без тела (abstract и методы интерфейса) ;
-   конструктор и деструктор - обычные методы с именами __construct и __destruct, не ключевые слова */
-method_declaration : modifiers_e T_FUNCTION returns_ref identifier '(' parameter_list_e ')' return_type block
-                   | modifiers_e T_FUNCTION returns_ref identifier '(' parameter_list_e ')' return_type ';'
+/* объявление метода: с телом {...} или без тела (abstract и методы интерфейса) */
+method_declaration : modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type block
+                   | modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';'
                    ;
 
 /* имя метода или константы класса: обычное слово или служебное (function private(), const list = 1) */
