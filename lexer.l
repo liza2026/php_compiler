@@ -15,14 +15,33 @@
     #include <cstdlib>  // strtoll
     #include <cerrno>   // для макроса errno
     #include <vector>
+    #include <deque>
     #include "core/helpers/Console.h"
     #include "core/helpers/Buffer.h"
     #include "parser.tab.hpp"
     using std::string;
 
+    /* Flex-функция сканирует один токен, а yylex (в конце файла) сначала отдаёт токены из очереди:
+       одно совпадение может породить несколько токенов (строка с вставками - это ( "a" . ($x) . "b" )) */
+    #define YY_DECL int scanToken()
+    int scanToken();
+
+    struct PendingToken { int token; YYSTYPE value; };
+    static std::deque<PendingToken> pendingTokens;
+
+    /* для каждой открытой строки "...": была ли в ней вставка */
+    static std::vector<bool> stringHasInterp;
+    /* для каждой открытой вставки {$...} или ${...}: сколько "{" открыто внутри и нужна ли "}" парсеру */
+    struct Interp { int depth; bool dollarExpr; };
+    static std::vector<Interp> interps;
+
+    void pushToken(int token);
+    void pushString(int token, const std::string& text);
+    int popPending();
+    void startInterpolation(Buffer& stringBuf);
+
     std::string formatDouble(double value);
     std::string stripUnderscores(const std::string& text);
-    int flushStringFragment(Buffer& stringBuf);
     bool isBigInteger(const std::string& digits, int base);
     double calcBigInteger(const std::string& digits, int base);
 %}
@@ -40,7 +59,10 @@
    STRING_D      - "..."
    INTERP_INDEX  - [ключ] после $var внутри "..."
    INTERP_PROP   - ->свойство после $var внутри "..."
-   VARNAME       - имя сразу после ${ (если дальше [ или }) - токен T_STRING_VARNAME */
+   Строка в двойных кавычках парсеру отдаётся как обычное выражение:
+     "abc"            -> T_CONSTANT_STRING
+     "a $x b {$y} c"  -> ( "a " . ( $x ) . " b " . ( $y ) . " c" )
+   то есть '"' и фрагменты строк в грамматике не нужны */
 
 %s IN_CURLY
 %x NOPHP
@@ -51,7 +73,6 @@
 %x STRING_D
 %x INTERP_INDEX
 %x INTERP_PROP
-%x VARNAME
 
 
 /* Макросы */
@@ -85,8 +106,6 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
     static bool started = false;   // файл начинается с HTML, а не с PHP-кода
     static Buffer commentBuf;
     static Buffer stringBuf;
-    /* Сколько "{" открыто внутри текущей {$...} (чтобы "}" не закрыла её раньше времени) */
-    static std::vector<int> exprDepth;
 
     if (!started) {
         started = true;
@@ -129,19 +148,22 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
     /* внутри вставки {$ ... } каждая { открывает вложенное состояние, а } закрывает его */
 <IN_CURLY>"{" {
     Console::Log("Separator: {");
-    exprDepth.back()++;
+    interps.back().depth++;
     return '{';
 }
 <IN_CURLY>"}" {
-    if (exprDepth.back() > 0) {
-        exprDepth.back()--;
+    if (interps.back().depth > 0) {
+        interps.back().depth--;
         Console::Log("Separator: }");
         return '}';
     } else {
         Console::Log("InterpolationEnd: }");
-        exprDepth.pop_back();
+        /* у ${выражение} парсер видит '$' '{' выражение '}', у остальных вставок '}' в токены не попадает */
+        if (interps.back().dollarExpr) pushToken('}');
+        pushToken(')');
+        interps.pop_back();
         yy_pop_state();
-        return '}';
+        return popPending();
     }
 }
 
@@ -320,14 +342,14 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     Console::Log("Identifier: " + string(yytext));
     yylval.str = new std::string(yytext);
     yy_pop_state();
-    return T_STRING;
+    return T_ID;
 }
 <MEMBER>[ \t\r\n]+ { }
 <MEMBER>. {
     yyless(0);
     yy_pop_state();
 }
-<MEMBER,VARNAME><<EOF>> {
+<MEMBER><<EOF>> {
     yy_pop_state();
 }
 
@@ -337,7 +359,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 {LABEL} {
     Console::Log("Identifier: " + string(yytext));
     yylval.str = new std::string(yytext);
-    return T_STRING;
+    return T_ID;
 }
 {NAME_RELATIVE} {
     Console::Log("Identifier (relative): " + string(yytext));
@@ -518,24 +540,32 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 
 
-    /* Строки в двойных кавычках
-       "a $x b {$y} c" -> StringStart, Fragment "a ", Variable $x, Fragment " b ",
-                          InterpolationStart, код, '}', Fragment " c", StringEnd */
+    /* Строки в двойных кавычках: без вставок это один токен T_CONSTANT_STRING, со вставками -
+       ( "фрагмент" . ( вставка ) . "фрагмент" ); пустой фрагмент в начале нужен, чтобы результат был строкой */
 \" {
     Console::Log("StringStart (line " + std::to_string(yylineno) + ")");
     stringBuf.reset();
+    stringBuf.setStartLine(yylineno);
+    stringHasInterp.push_back(false);
     yy_push_state(STRING_D);
-    return '"';
 }
 <STRING_D>\" {
-    if (!stringBuf.current().empty()) {
-        yyless(0);
-        return flushStringFragment(stringBuf);
+    Console::Log("StringEnd");
+    bool hasInterp = stringHasInterp.back();
+    stringHasInterp.pop_back();
+    yy_pop_state();
+    if (!hasInterp) {
+        Console::Log("String literal (line " + std::to_string(stringBuf.getStartLine()) + "): \"" + stringBuf.current() + "\"");
+        pushString(T_CONSTANT_STRING, stringBuf.current());
     } else {
-        Console::Log("StringEnd");
-        yy_pop_state();
-        return '"';
+        if (!stringBuf.current().empty()) {
+            pushToken('.');
+            pushString(T_CONSTANT_STRING, stringBuf.current());
+        }
+        pushToken(')');
     }
+    stringBuf.reset();
+    return popPending();
 }
 
     /* Кусок текста: раскрываем escape-последовательности */
@@ -573,59 +603,45 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     stringBuf.append(text);
 }
 
-    /* Простые вставки: $x, $x[...], $x->y, $x?->y */
+    /* Простые вставки: $x, $x[...], $x->y, $x?->y -> . ( $x ), . ( $x [ ключ ] ), . ( $x -> y ) */
 <STRING_D>{VARIABLE}/"[" {
-    if (!stringBuf.current().empty()) {
-        yyless(0);
-        return flushStringFragment(stringBuf);
-    } else {
-        Console::Log("Variable: " + string(yytext));
-        yy_push_state(INTERP_INDEX);
-        yylval.str = new std::string(yytext + 1);
-        return T_VARIABLE;
-    }
+    Console::Log("Variable: " + string(yytext));
+    startInterpolation(stringBuf);
+    pushString(T_VARIABLE, yytext + 1);
+    yy_push_state(INTERP_INDEX);
+    return popPending();
 }
 <STRING_D>{VARIABLE}/"->"[A-Za-z_\x80-\xff] {
-    if (!stringBuf.current().empty()) {
-        yyless(0);
-        return flushStringFragment(stringBuf);
-    } else {
-        Console::Log("Variable: " + string(yytext));
-        yy_push_state(INTERP_PROP);
-        yylval.str = new std::string(yytext + 1);
-        return T_VARIABLE;
-    }
+    Console::Log("Variable: " + string(yytext));
+    startInterpolation(stringBuf);
+    pushString(T_VARIABLE, yytext + 1);
+    yy_push_state(INTERP_PROP);
+    return popPending();
 }
 <STRING_D>{VARIABLE}/"?->"[A-Za-z_\x80-\xff] {
-    if (!stringBuf.current().empty()) {
-        yyless(0);
-        return flushStringFragment(stringBuf);
-    } else {
-        Console::Log("Variable: " + string(yytext));
-        yy_push_state(INTERP_PROP);
-        yylval.str = new std::string(yytext + 1);
-        return T_VARIABLE;
-    }
+    Console::Log("Variable: " + string(yytext));
+    startInterpolation(stringBuf);
+    pushString(T_VARIABLE, yytext + 1);
+    yy_push_state(INTERP_PROP);
+    return popPending();
 }
 <STRING_D>{VARIABLE} {
-    if (!stringBuf.current().empty()) {
-        yyless(0);
-        return flushStringFragment(stringBuf);
-    } else {
-        Console::Log("Variable: " + string(yytext));
-        yylval.str = new std::string(yytext + 1);
-        return T_VARIABLE;
-    }
+    Console::Log("Variable: " + string(yytext));
+    startInterpolation(stringBuf);
+    pushString(T_VARIABLE, yytext + 1);
+    pushToken(')');
+    return popPending();
 }
 
 <INTERP_INDEX>"[" {
     Console::Log("Separator: [");
     return '[';
 }
+    /* "$a[key]": некавыченный ключ - это строка 'key', а не константа */
 <INTERP_INDEX>{LABEL} {
-    Console::Log("Identifier: " + string(yytext));
+    Console::Log("String key: " + string(yytext));
     yylval.str = new std::string(yytext);
-    return T_STRING;
+    return T_CONSTANT_STRING;
 }
 <INTERP_INDEX>"-" {
     Console::Log("Operator: -");
@@ -635,9 +651,9 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     std::string int_str = stripUnderscores(yytext);
     if (isBigInteger(int_str, 10)) {
         // как в PHP: слишком большое число в "$a[...]" - это строковый ключ
-        Console::Log("Identifier: " + string(yytext));
+        Console::Log("String key: " + string(yytext));
         yylval.str = new std::string(yytext);
-        return T_STRING;
+        return T_CONSTANT_STRING;
     }
     long long value = std::strtoll(int_str.c_str(), nullptr, 10);
     Console::Log("Integer: " + std::to_string(value));
@@ -652,7 +668,9 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 <INTERP_INDEX>"]" {
     Console::Log("Separator: ]");
     yy_pop_state();
-    return ']';
+    pushToken(']');
+    pushToken(')');
+    return popPending();
 }
 <INTERP_INDEX>(.|\n) {
     Console::Error("Unexpected symbol '" + string(yytext) + "' in string offset at line " + std::to_string(yylineno));
@@ -669,46 +687,39 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 <INTERP_PROP>{LABEL} {
     Console::Log("Identifier: " + string(yytext));
-    yylval.str = new std::string(yytext);
     yy_pop_state();
-    return T_STRING;
+    pushString(T_ID, yytext);
+    pushToken(')');
+    return popPending();
 }
 
     /* Сложные вставки: дальше читаем обычный PHP-код до парной } */
+    /* {$expr} -> . ( $expr ) */
 <STRING_D>"{"/"$" {
-    if (!stringBuf.current().empty()) {
-        yyless(0);
-        return flushStringFragment(stringBuf);
-    } else {
-        Console::Log("InterpolationStart: {");
-        exprDepth.push_back(0);
-        yy_push_state(IN_CURLY);
-        return T_CURLY_OPEN;
-    }
+    Console::Log("InterpolationStart: {");
+    startInterpolation(stringBuf);
+    interps.push_back({0, false});
+    yy_push_state(IN_CURLY);
+    return popPending();
 }
+    /* ${имя} и ${имя[...]} - это переменная $имя */
+<STRING_D>"${"{LABEL}/[\[}] {
+    Console::Log("InterpolationStart: ${");
+    startInterpolation(stringBuf);
+    pushString(T_VARIABLE, yytext + 2);
+    interps.push_back({0, false});
+    yy_push_state(IN_CURLY);
+    return popPending();
+}
+    /* ${выражение} - переменная-переменная: парсер видит '$' '{' выражение '}' */
 <STRING_D>"${" {
-    if (!stringBuf.current().empty()) {
-        yyless(0);
-        return flushStringFragment(stringBuf);
-    } else {
-        Console::Log("InterpolationStart: ${");
-        exprDepth.push_back(0);
-        yy_push_state(IN_CURLY);
-        yy_push_state(VARNAME);   // ${имя} и ${имя[...]} - имя это T_STRING_VARNAME
-        return T_DOLLAR_OPEN_CURLY_BRACES;
-    }
-}
-
-    /* сразу после ${ : имя, за которым идёт [ или } */
-<VARNAME>{LABEL}/[\[}] {
-    Console::Log("Identifier: " + string(yytext));
-    yylval.str = new std::string(yytext);
-    yy_pop_state();
-    return T_STRING_VARNAME;
-}
-<VARNAME>(.|\n) {
-    yyless(0);
-    yy_pop_state();
+    Console::Log("InterpolationStart: ${");
+    startInterpolation(stringBuf);
+    pushToken('$');
+    pushToken('{');
+    interps.push_back({0, true});
+    yy_push_state(IN_CURLY);
+    return popPending();
 }
 
 <STRING_D,INTERP_INDEX,INTERP_PROP><<EOF>> {
@@ -731,12 +742,49 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 
 %%
 
-/* отдаёт накопленный текст строки как токен-фрагмент */
-int flushStringFragment(Buffer& stringBuf) {
-    Console::Log("StringFragment: \"" + stringBuf.current() + "\"");
-    yylval.str = new std::string(stringBuf.current());
+/* токен без значения - в конец очереди */
+void pushToken(int token) {
+    PendingToken pending;
+    pending.token = token;
+    pendingTokens.push_back(pending);
+}
+
+/* токен со строковым значением (T_CONSTANT_STRING, T_VARIABLE, T_ID) - в конец очереди */
+void pushString(int token, const std::string& text) {
+    PendingToken pending;
+    pending.token = token;
+    pending.value.str = new std::string(text);
+    pendingTokens.push_back(pending);
+}
+
+/* достаёт первый токен очереди и кладёт его значение в yylval */
+int popPending() {
+    PendingToken pending = pendingTokens.front();
+    pendingTokens.pop_front();
+    yylval = pending.value;
+    return pending.token;
+}
+
+/* начало вставки в строке. Первая вставка открывает "(" и отдаёт накопленный фрагмент (возможно, пустой),
+   следующие присоединяются через '.'; пустые фрагменты между вставками не нужны */
+void startInterpolation(Buffer& stringBuf) {
+    if (!stringHasInterp.back()) {
+        stringHasInterp.back() = true;
+        pushToken('(');
+        pushString(T_CONSTANT_STRING, stringBuf.current());
+    } else if (!stringBuf.current().empty()) {
+        pushToken('.');
+        pushString(T_CONSTANT_STRING, stringBuf.current());
+    }
     stringBuf.reset();
-    return T_ENCAPSED_AND_WHITESPACE;
+    pushToken('.');
+    pushToken('(');
+}
+
+/* то, что видит парсер: сначала токены из очереди, затем следующее совпадение лексера */
+int yylex() {
+    if (!pendingTokens.empty()) return popPending();
+    return scanToken();
 }
 
 /* %.14g даёт компактную запись*/
