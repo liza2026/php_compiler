@@ -490,15 +490,12 @@ class_member_list : %empty
                   ;
 
 /* член класса */
-class_member : property_declaration
-             | class_constant_declaration
-             | method_declaration
+class_member : member_modifiers type_e property_list ';'
+             | T_VAR type_e property_list ';'
+             | modifiers_e T_CONST const_list ';'
+             | modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type block
+             | modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';'
              ;
-
-/* объявление свойства: public int $x = 0, $y; var $z; static $count; */
-property_declaration : member_modifiers type_e property_list ';'
-                     | T_VAR type_e property_list ';'
-                     ;
 
 /* свойства через запятую */
 property_list : T_VARIABLE
@@ -507,19 +504,10 @@ property_list : T_VARIABLE
               | property_list ',' T_VARIABLE '=' expr
               ;
 
-/* объявление константы класса */
-class_constant_declaration : modifiers_e T_CONST const_list ';'
-                           ;
-
 /* константы через запятую */
 const_list : identifier '=' expr
            | const_list ',' identifier '=' expr
            ;
-
-/* объявление метода: с телом {...} или без тела (abstract и методы интерфейса) */
-method_declaration : modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type block
-                   | modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';'
-                   ;
 
 /* имя метода или константы класса: обычное слово или служебное (function private(), const list = 1) */
 identifier : T_ID
@@ -536,8 +524,7 @@ identifier : T_ID
            | T_LOGICAL_AND | T_LOGICAL_OR | T_LOGICAL_XOR
            ;
 
-/* Модификаторы классов, членов класса и параметров-свойств конструктора.
-   Порядок и повторы не проверяются здесь (public private, abstract final - ошибка компиляции) */
+/* Модификаторы классов, членов класса и параметров-свойств конструктора */
 
 modifiers_e : %empty
             | member_modifiers
