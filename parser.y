@@ -508,13 +508,10 @@ property_declaration : member_modifiers type_e property_list ';'
                      ;
 
 /* свойства через запятую */
-property_list : property_item
-              | property_list ',' property_item
-              ;
-
-/* свойство */
-property_item : T_VARIABLE
+property_list : T_VARIABLE
               | T_VARIABLE '=' expr
+              | property_list ',' T_VARIABLE
+              | property_list ',' T_VARIABLE '=' expr
               ;
 
 /* объявление константы класса */
