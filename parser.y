@@ -127,7 +127,7 @@ block : '{' stmt_list '}'
 
 /* $a, $$a, ${expr}, $a[0], $o->p, $o?->p, $o->m(), $f(1), Foo::$x, Foo::$$x, Foo::bar() */
 variable : simple_variable
-         | dereferenceable '[' expr ']'
+         | dereferenceable '[' expr_e ']'
          | dereferenceable T_OBJECT_OPERATOR member_name
          | dereferenceable T_NULLSAFE_OBJECT_OPERATOR member_name
          | dereferenceable argument_list
@@ -147,11 +147,6 @@ dereferenceable : variable
                 | name argument_list
                 | T_NEW class_ref argument_list
                 ;
-
-/* то, чему можно присвоить значение: $a, $a[0], $a[], $o->p, $$a */
-lvalue : variable
-       | dereferenceable '[' ']'
-       ;
 
 /* имя свойства или метода после -> и ?->: $o->p, $o->$name, $o->{expr} */
 member_name : T_ID
@@ -179,20 +174,20 @@ expr : T_LNUMBER
      | dereferenceable
      | name
      | array_literal
-     | lvalue '='              expr
-     | lvalue T_PLUS_EQUAL     expr
-     | lvalue T_MINUS_EQUAL    expr
-     | lvalue T_MUL_EQUAL      expr
-     | lvalue T_DIV_EQUAL      expr
-     | lvalue T_CONCAT_EQUAL   expr
-     | lvalue T_MOD_EQUAL      expr
-     | lvalue T_POW_EQUAL      expr
-     | lvalue T_AND_EQUAL      expr
-     | lvalue T_OR_EQUAL       expr
-     | lvalue T_XOR_EQUAL      expr
-     | lvalue T_SL_EQUAL       expr
-     | lvalue T_SR_EQUAL       expr
-     | lvalue T_COALESCE_EQUAL expr
+     | variable '='              expr       /* !$a = 5 == !($a = 5) */
+     | variable T_PLUS_EQUAL     expr
+     | variable T_MINUS_EQUAL    expr
+     | variable T_MUL_EQUAL      expr
+     | variable T_DIV_EQUAL      expr
+     | variable T_CONCAT_EQUAL   expr
+     | variable T_MOD_EQUAL      expr
+     | variable T_POW_EQUAL      expr
+     | variable T_AND_EQUAL      expr
+     | variable T_OR_EQUAL       expr
+     | variable T_XOR_EQUAL      expr
+     | variable T_SL_EQUAL       expr
+     | variable T_SR_EQUAL       expr
+     | variable T_COALESCE_EQUAL expr
      | T_INC variable
      | T_DEC variable
      | variable T_INC
