@@ -416,16 +416,11 @@ return_type : %empty
 
 /* Типы: int, ?string, int|float */
 
-/* тип: один, допускающий null (?int) или перечисление через | */
+/* тип: int, ?int, int|string|null */
 type : type_name
      | '?' type_name
-     | type_alternatives
+     | type '|' type_name
      ;
-
-/* два и более типа через | : int|string|null */
-type_alternatives : type_name '|' type_name
-                  | type_alternatives '|' type_name
-                  ;
 
 /* одно имя типа; null, false, true - отдельные ключевые слова: int|false, string|null */
 type_name : T_ARRAY
