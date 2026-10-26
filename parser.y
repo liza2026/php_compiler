@@ -141,8 +141,12 @@ block : '{' stmt_list '}'
 /* $a, $$a, ${expr}, $a[0], $o->p, $o?->p, $o->m(), $f(1), Foo::$x, Foo::$$x, Foo::bar() */
 variable : simple_variable
          | dereferenceable '[' expr_e ']'
-         | dereferenceable T_OBJECT_OPERATOR member_name
-         | dereferenceable T_NULLSAFE_OBJECT_OPERATOR member_name
+         | dereferenceable T_OBJECT_OPERATOR T_ID
+         | dereferenceable T_OBJECT_OPERATOR simple_variable
+         | dereferenceable T_OBJECT_OPERATOR '{' expr '}'
+         | dereferenceable T_NULLSAFE_OBJECT_OPERATOR T_ID
+         | dereferenceable T_NULLSAFE_OBJECT_OPERATOR simple_variable
+         | dereferenceable T_NULLSAFE_OBJECT_OPERATOR '{' expr '}'
          | dereferenceable argument_list_e
          | class_ref T_DOUBLE_COLON simple_variable
          | class_ref T_DOUBLE_COLON T_ID argument_list_e
@@ -160,12 +164,6 @@ dereferenceable : variable
                 | name argument_list_e
                 | T_NEW class_ref argument_list_e
                 ;
-
-/* имя свойства или метода после -> и ?->: $o->p, $o->$name, $o->{expr} */
-member_name : T_ID
-            | simple_variable
-            | '{' expr '}'
-            ;
 
 /* слева от :: и после new стоит имя класса, static, переменная ($cls) или (выражение);
    parent, self - обычные имена */
