@@ -127,7 +127,8 @@ stmt : ';'
      | T_TRY block catch_list_e
      | T_TRY block catch_list_e T_FINALLY block
      | T_FUNCTION is_reference T_ID '(' parameter_list_e ')' return_type block
-     | class_declaration
+     | modifiers_e T_CLASS T_ID class_heritage '{' class_member_list '}'
+     | T_INTERFACE T_ID class_heritage '{' class_member_list '}'
      ;
 
 block : '{' stmt_list '}'
@@ -412,11 +413,6 @@ catch_types : name
             ;
 
 /* Классы и интерфейсы: свойства, константы, методы, наследование */
-
-/* объявление класса или интерфейса */
-class_declaration : modifiers_e T_CLASS T_ID class_heritage '{' class_member_list '}'
-                  | T_INTERFACE T_ID class_heritage '{' class_member_list '}'
-                  ;
 
 /* extends и implements */
 class_heritage : %empty
