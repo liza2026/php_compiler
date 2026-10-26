@@ -227,7 +227,7 @@ expr : T_LNUMBER
      | expr '?' expr ':' expr                  /* a ? b : c */
      | expr '?' ':' expr %prec T_SHORT_TERNARY /* a ?: b */
      | expr T_COALESCE expr                    /* a ?? b */
-     | T_MATCH '(' expr ')' '{' match_arm_list '}'
+     | T_MATCH '(' expr ')' '{' match_arm_list_e '}'
      | T_PRINT expr %prec T_LOGICAL_AND
      | T_THROW expr
      | T_NEW class_ref
@@ -314,14 +314,14 @@ case_list : %empty
           ;
 
 /* ветки match */
-match_arm_list : %empty
-               | non_empty_match_arm_list possible_comma
-               ;
+match_arm_list_e : %empty
+                 | match_arm_list possible_comma
+                 ;
 
 /* хотя бы одна ветка match */
-non_empty_match_arm_list : match_arm
-                         | non_empty_match_arm_list ',' match_arm
-                         ;
+match_arm_list : match_arm
+               | match_arm_list ',' match_arm
+               ;
 
 /* одна ветка match */
 match_arm : expr_list possible_comma T_DOUBLE_ARROW expr
