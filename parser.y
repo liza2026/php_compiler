@@ -108,7 +108,8 @@ stmt : ';'
      | T_ECHO expr_list ';'
      | if_stmt
      | switch_stmt
-     | while_stmt
+     | T_WHILE '(' expr ')' stmt
+     | T_WHILE '(' expr ')' ':' stmt_list T_ENDWHILE ';'
      | do_while_stmt
      | for_stmt
      | foreach_stmt
@@ -320,11 +321,6 @@ match_arm_list : expr_list possible_comma T_DOUBLE_ARROW expr
                ;
 
 /* Циклы: while, do-while, for, foreach */
-
-/* цикл while */
-while_stmt : T_WHILE '(' expr ')' stmt
-           | T_WHILE '(' expr ')' ':' stmt_list T_ENDWHILE ';'
-           ;
 
 /* цикл do-while */
 do_while_stmt : T_DO stmt T_WHILE '(' expr ')' ';'
