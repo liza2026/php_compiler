@@ -319,14 +319,11 @@ match_arm_list_e : %empty
                  ;
 
 /* хотя бы одна ветка match */
-match_arm_list : match_arm
-               | match_arm_list ',' match_arm
+match_arm_list : expr_list possible_comma T_DOUBLE_ARROW expr
+               | T_DEFAULT possible_comma T_DOUBLE_ARROW expr
+               | match_arm_list ',' expr_list possible_comma T_DOUBLE_ARROW expr
+               | match_arm_list ',' T_DEFAULT possible_comma T_DOUBLE_ARROW expr
                ;
-
-/* одна ветка match */
-match_arm : expr_list possible_comma T_DOUBLE_ARROW expr
-          | T_DEFAULT possible_comma T_DOUBLE_ARROW expr
-          ;
 
 /* Циклы: while, do-while, for, foreach */
 
