@@ -110,7 +110,7 @@ stmt : ';'
      | switch_stmt
      | T_WHILE '(' expr ')' stmt
      | T_WHILE '(' expr ')' ':' stmt_list T_ENDWHILE ';'
-     | do_while_stmt
+     | T_DO stmt T_WHILE '(' expr ')' ';'
      | for_stmt
      | foreach_stmt
      | T_BREAK expr_e ';'
@@ -321,10 +321,6 @@ match_arm_list : expr_list possible_comma T_DOUBLE_ARROW expr
                ;
 
 /* Циклы: while, do-while, for, foreach */
-
-/* цикл do-while */
-do_while_stmt : T_DO stmt T_WHILE '(' expr ')' ';'
-              ;
 
 /* цикл for: части заголовка могут быть пустыми и содержать несколько выражений через запятую */
 for_stmt : T_FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' stmt
