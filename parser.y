@@ -113,7 +113,10 @@ stmt : ';'
      | T_DO stmt T_WHILE '(' expr ')' ';'
      | T_FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' stmt
      | T_FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' ':' stmt_list T_ENDFOR ';'
-     | foreach_stmt
+     | T_FOREACH '(' expr T_AS foreach_variable ')' stmt
+     | T_FOREACH '(' expr T_AS foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
+     | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' stmt
+     | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
      | T_BREAK expr_e ';'
      | T_CONTINUE expr_e ';'
      | T_RETURN expr_e ';'
@@ -326,13 +329,6 @@ match_arm_list : expr_list possible_comma T_DOUBLE_ARROW expr
 for_exprs : %empty
           | expr_list
           ;
-
-/* цикл foreach: $array as $value; $array as $key => $value */
-foreach_stmt : T_FOREACH '(' expr T_AS foreach_variable ')' stmt
-             | T_FOREACH '(' expr T_AS foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
-             | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' stmt
-             | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
-             ;
 
 /* $v, &$v (по ссылке), [$a, $b] и list($a, $b) (разбор элемента на части) */
 foreach_variable : variable
