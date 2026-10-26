@@ -105,7 +105,7 @@ stmt : ';'
      | expr ';'
      | T_INLINE_HTML
      | block
-     | echo_stmt
+     | T_ECHO expr_list ';'
      | if_stmt
      | switch_stmt
      | while_stmt
@@ -269,12 +269,6 @@ array_items : expr
             | array_items ',' expr
             | array_items ',' expr T_DOUBLE_ARROW expr
             ;
-
-/* Консоль: echo, print, printf/fgets/readline */
-
-/* оператор echo */
-echo_stmt : T_ECHO expr_list ';'
-          ;
 
 /* Развилки: if/elseif/else, switch, match */
 
