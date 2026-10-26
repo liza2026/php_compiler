@@ -106,7 +106,6 @@ stmt : ';'
      | T_INLINE_HTML
      | block
      | T_ECHO expr_list ';'
-     | if_stmt
      | switch_stmt
      | T_WHILE '(' expr ')' stmt
      | T_WHILE '(' expr ')' ':' stmt_list T_ENDWHILE ';'
@@ -117,6 +116,10 @@ stmt : ';'
      | T_FOREACH '(' expr T_AS foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
      | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' stmt
      | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
+     | if_without_else %prec T_NOELSE
+     | if_without_else T_ELSE stmt
+     | alt_if_without_else T_ENDIF ';'
+     | alt_if_without_else T_ELSE ':' stmt_list T_ENDIF ';'
      | T_BREAK expr_e ';'
      | T_CONTINUE expr_e ';'
      | T_RETURN expr_e ';'
@@ -276,13 +279,6 @@ array_items : expr
             ;
 
 /* Развилки: if/elseif/else, switch, match */
-
-/* оператор if */
-if_stmt : if_without_else %prec T_NOELSE
-        | if_without_else T_ELSE stmt
-        | alt_if_without_else T_ENDIF ';'
-        | alt_if_without_else T_ELSE ':' stmt_list T_ENDIF ';'
-        ;
 
 /* if без else */
 if_without_else : T_IF '(' expr ')' stmt
