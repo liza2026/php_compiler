@@ -106,7 +106,6 @@ stmt : ';'
      | T_INLINE_HTML
      | block
      | T_ECHO expr_list ';'
-     | switch_stmt
      | T_WHILE '(' expr ')' stmt
      | T_WHILE '(' expr ')' ':' stmt_list T_ENDWHILE ';'
      | T_DO stmt T_WHILE '(' expr ')' ';'
@@ -120,6 +119,8 @@ stmt : ';'
      | if_without_else T_ELSE stmt
      | alt_if_without_else T_ENDIF ';'
      | alt_if_without_else T_ELSE ':' stmt_list T_ENDIF ';'
+     | T_SWITCH '(' expr ')' '{' semicolons_e case_list '}'
+     | T_SWITCH '(' expr ')' ':' semicolons_e case_list T_ENDSWITCH ';'
      | T_BREAK expr_e ';'
      | T_CONTINUE expr_e ';'
      | T_RETURN expr_e ';'
@@ -289,11 +290,6 @@ if_without_else : T_IF '(' expr ')' stmt
 alt_if_without_else : T_IF '(' expr ')' ':' stmt_list
                     | alt_if_without_else T_ELSEIF '(' expr ')' ':' stmt_list
                     ;
-
-/* оператор switch; перед первым case допустимо любое число ';' */
-switch_stmt : T_SWITCH '(' expr ')' '{' semicolons_e case_list '}'
-            | T_SWITCH '(' expr ')' ':' semicolons_e case_list T_ENDSWITCH ';'
-            ;
 
 /* ';' подряд (после последнего case они разбираются как пустые операторы его stmt_list) */
 semicolons_e : %empty
