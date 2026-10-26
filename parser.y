@@ -425,18 +425,14 @@ name_list : name
           | name_list ',' name
           ;
 
-/* члены класса и интерфейса (свойства в интерфейсе - ошибка компиляции) */
+/* члены класса и интерфейса */
 class_member_list : %empty
-                  | class_member_list class_member
+                  | class_member_list member_modifiers type_e property_list ';'
+                  | class_member_list T_VAR type_e property_list ';'
+                  | class_member_list modifiers_e T_CONST const_list ';'
+                  | class_member_list modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type block
+                  | class_member_list modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';'
                   ;
-
-/* член класса */
-class_member : member_modifiers type_e property_list ';'
-             | T_VAR type_e property_list ';'
-             | modifiers_e T_CONST const_list ';'
-             | modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type block
-             | modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';'
-             ;
 
 /* свойства через запятую */
 property_list : T_VARIABLE
