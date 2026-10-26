@@ -105,6 +105,9 @@ stmt : ';'
      | expr ';'
      | T_INLINE_HTML
      | block
+     | T_BREAK expr_e ';'
+     | T_CONTINUE expr_e ';'
+     | T_RETURN expr_e ';'
      | T_ECHO expr_list ';'
      | T_WHILE '(' expr ')' stmt
      | T_WHILE '(' expr ')' ':' stmt_list T_ENDWHILE ';'
@@ -123,10 +126,7 @@ stmt : ';'
      | T_SWITCH '(' expr ')' ':' semicolons_e case_list T_ENDSWITCH ';'
      | T_TRY block catch_list_e
      | T_TRY block catch_list_e T_FINALLY block
-     | T_BREAK expr_e ';'
-     | T_CONTINUE expr_e ';'
-     | T_RETURN expr_e ';'
-     | function_declaration
+     | T_FUNCTION is_reference T_ID '(' parameter_list_e ')' return_type block
      | class_declaration
      ;
 
@@ -330,10 +330,6 @@ foreach_variable : variable
                  ;
 
 /* Функции: объявление, параметры, вызов */
-
-/* объявление функции */
-function_declaration : T_FUNCTION is_reference T_ID '(' parameter_list_e ')' return_type block
-                     ;
 
 /* список параметров: [модификаторы] [тип] [&] [...]$имя [= значение] */
 parameter_list_e : %empty
