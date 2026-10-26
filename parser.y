@@ -121,11 +121,12 @@ stmt : ';'
      | alt_if_without_else T_ELSE ':' stmt_list T_ENDIF ';'
      | T_SWITCH '(' expr ')' '{' semicolons_e case_list '}'
      | T_SWITCH '(' expr ')' ':' semicolons_e case_list T_ENDSWITCH ';'
+     | T_TRY block catch_list_e
+     | T_TRY block catch_list_e T_FINALLY block
      | T_BREAK expr_e ';'
      | T_CONTINUE expr_e ';'
      | T_RETURN expr_e ';'
      | function_declaration
-     | try_stmt
      | class_declaration
      ;
 
@@ -403,32 +404,16 @@ argument : expr
 
 /* Исключения: try / catch / finally, throw  */
 
-/* try нужен хотя бы один catch или finally (это проверяется позже, как ошибка компиляции) */
-try_stmt : T_TRY block catch_list_e finally_e
-         ;
-
-catch_list_e : %empty
-             | catch_list_e catch_clause
-             ;
-
 /* catch (A | B $e), catch (A) - переменная необязательна */
-catch_clause : T_CATCH '(' catch_types catch_var_e ')' block
+catch_list_e : %empty
+             | catch_list_e T_CATCH '(' catch_types ')' block
+             | catch_list_e T_CATCH '(' catch_types T_VARIABLE ')' block
              ;
 
 /* типы исключений в catch */
 catch_types : name
             | catch_types '|' name
             ;
-
-/* необязательная переменная в catch */
-catch_var_e : %empty
-            | T_VARIABLE
-            ;
-
-/* необязательный блок finally */
-finally_e : %empty
-          | T_FINALLY block
-          ;
 
 /* Классы и интерфейсы: свойства, константы, методы, наследование */
 
