@@ -143,9 +143,9 @@ variable : simple_variable
          | dereferenceable '[' expr_e ']'
          | dereferenceable T_OBJECT_OPERATOR member_name
          | dereferenceable T_NULLSAFE_OBJECT_OPERATOR member_name
-         | dereferenceable argument_list
+         | dereferenceable argument_list_e
          | class_ref T_DOUBLE_COLON simple_variable
-         | class_ref T_DOUBLE_COLON T_ID argument_list
+         | class_ref T_DOUBLE_COLON T_ID argument_list_e
          ;
 
 /* переменная по имени: $a, переменная-переменная $$a, $$$a, ${expr} (имя - значение выражения) */
@@ -157,8 +157,8 @@ simple_variable : T_VARIABLE
 /* то, к чему можно применить [ ], -> и ( ): переменная, (выражение), foo(), new Foo() */
 dereferenceable : variable
                 | '(' expr ')'
-                | name argument_list
-                | T_NEW class_ref argument_list
+                | name argument_list_e
+                | T_NEW class_ref argument_list_e
                 ;
 
 /* имя свойства или метода после -> и ?->: $o->p, $o->$name, $o->{expr} */
@@ -378,21 +378,19 @@ type_name : T_ARRAY
           ;
 
 /* аргументы в скобках */
-argument_list : '(' ')'
-              | '(' non_empty_argument_list possible_comma ')'
-              | '(' T_ELLIPSIS ')'
-              ;
+argument_list_e : '(' ')'
+                | '(' argument_list possible_comma ')'
+                | '(' T_ELLIPSIS ')'
+                ;
 
 /* хотя бы один аргумент */
-non_empty_argument_list : argument
-                        | non_empty_argument_list ',' argument
-                        ;
-
-/* позиционный, именованный (width: 10) и распаковка (...$args) */
-argument : expr
-         | T_ID ':' expr
-         | T_ELLIPSIS expr
-         ;
+argument_list : expr
+              | T_ID ':' expr
+              | T_ELLIPSIS expr
+              | argument_list ',' expr
+              | argument_list ',' T_ID ':' expr
+              | argument_list ',' T_ELLIPSIS expr
+              ;
 
 /* Исключения: try / catch / finally, throw  */
 
