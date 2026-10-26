@@ -122,8 +122,10 @@ stmt : ';'
      | if_without_else T_ELSE stmt
      | alt_if_without_else T_ENDIF ';'
      | alt_if_without_else T_ELSE ':' stmt_list T_ENDIF ';'
-     | T_SWITCH '(' expr ')' '{' semicolons_e case_list '}'
-     | T_SWITCH '(' expr ')' ':' semicolons_e case_list T_ENDSWITCH ';'
+     | T_SWITCH '(' expr ')' '{' case_list '}'
+     | T_SWITCH '(' expr ')' '{' ';' case_list '}'
+     | T_SWITCH '(' expr ')' ':' case_list T_ENDSWITCH ';'
+     | T_SWITCH '(' expr ')' ':' ';' case_list T_ENDSWITCH ';'
      | T_TRY block catch_list_e
      | T_TRY block catch_list_e T_FINALLY block
      | T_FUNCTION is_reference T_ID '(' parameter_list_e ')' return_type block
@@ -295,11 +297,6 @@ if_without_else : T_IF '(' expr ')' stmt
 alt_if_without_else : T_IF '(' expr ')' ':' stmt_list
                     | alt_if_without_else T_ELSEIF '(' expr ')' ':' stmt_list
                     ;
-
-/* ';' подряд (после последнего case они разбираются как пустые операторы его stmt_list) */
-semicolons_e : %empty
-             | semicolons_e ';'
-             ;
 
 /* ветки switch */
 case_list : %empty
