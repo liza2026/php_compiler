@@ -246,8 +246,10 @@ expr : T_LNUMBER
      | expr T_INSTANCEOF class_ref
      | class_ref T_DOUBLE_COLON T_ID
      | class_ref T_DOUBLE_COLON T_CLASS
-     | T_FUNCTION is_reference '(' parameter_list_e ')' lexical_vars return_type block
-     | T_STATIC T_FUNCTION is_reference '(' parameter_list_e ')' lexical_vars return_type block
+     | T_FUNCTION is_reference '(' parameter_list_e ')' return_type block
+     | T_FUNCTION is_reference '(' parameter_list_e ')' T_USE '(' lexical_var_list possible_comma ')' return_type block
+     | T_STATIC T_FUNCTION is_reference '(' parameter_list_e ')' return_type block
+     | T_STATIC T_FUNCTION is_reference '(' parameter_list_e ')' T_USE '(' lexical_var_list possible_comma ')' return_type block
      | T_FN is_reference '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
      | T_STATIC T_FN is_reference '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
      ;
@@ -477,10 +479,6 @@ member_modifier : T_PUBLIC
                 ;
 
 /* Замыкания: use ($a, &$b) - захваченные переменные; пустой список use () недопустим */
-
-lexical_vars : %empty
-             | T_USE '(' lexical_var_list possible_comma ')'
-             ;
 
 /* захваченные переменные */
 lexical_var_list : is_reference T_VARIABLE
