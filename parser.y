@@ -184,7 +184,9 @@ expr : T_LNUMBER
      | T_NULL
      | dereferenceable
      | name
-     | array_literal
+     | '[' array_items_opt ']'
+     | T_ARRAY '(' array_items_opt ')'
+     | T_LIST  '(' array_items_opt ')'
      | variable '='              expr       /* !$a = 5 == !($a = 5) */
      | variable T_PLUS_EQUAL     expr
      | variable T_MINUS_EQUAL    expr
@@ -266,12 +268,6 @@ expr_e : %empty
 
 /* Массивы: [1, 2], array(1, 2), ['a' => 1], [new A(), new B()] */
 
-/* массив */
-array_literal : '[' array_items_opt ']'
-              | T_ARRAY '(' array_items_opt ')'
-              | T_LIST  '(' array_items_opt ')'
-              ;
-
 /* список элементов массива */
 array_items_opt : %empty
                 | array_items
@@ -320,7 +316,9 @@ for_exprs : %empty
 /* $v, &$v (по ссылке), [$a, $b] и list($a, $b) (разбор элемента на части) */
 foreach_variable : variable
                  | '&' variable
-                 | array_literal
+                 |  '[' array_items_opt ']'
+                 | T_ARRAY '(' array_items_opt ')'
+                 | T_LIST  '(' array_items_opt ')'
                  ;
 
 /* Функции: объявление, параметры, вызов */
