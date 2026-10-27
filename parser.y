@@ -113,10 +113,10 @@ stmt : ';'
      | T_FOREACH '(' expr T_AS foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
      | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' stmt
      | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
-     | if_without_else
-     | if_without_else T_ELSE stmt
-     | alt_if_without_else T_ENDIF ';'
-     | alt_if_without_else T_ELSE ':' stmt_list T_ENDIF ';'
+     | T_IF '(' expr ')' stmt else_if_stmts
+     | T_IF '(' expr ')' stmt else_if_stmts T_ELSE stmt
+     | T_IF '(' expr ')' ':' stmt_list alt_else_if_stmts T_ENDIF ';'
+     | T_IF '(' expr ')' ':' stmt_list alt_else_if_stmts T_ELSE ':' stmt_list T_ENDIF ';'
      | T_SWITCH '(' expr ')' '{' case_list '}'
      | T_SWITCH '(' expr ')' '{' ';' case_list '}'
      | T_SWITCH '(' expr ')' ':' case_list T_ENDSWITCH ';'
@@ -277,15 +277,15 @@ array_items : expr
 
 /* Развилки: if/elseif/else, switch, match */
 
-/* if без else */
-if_without_else : T_IF '(' expr ')' stmt
-                | if_without_else T_ELSEIF '(' expr ')' stmt
-                ;
+/* цепочка elseif: elseif (...) stmt */
+else_if_stmts : %empty
+              | else_if_stmts T_ELSEIF '(' expr ')' stmt
+              ;
 
-/* альтернативный синтаксис: if (...): ... elseif (...): ... else: ... endif; */
-alt_if_without_else : T_IF '(' expr ')' ':' stmt_list
-                    | alt_if_without_else T_ELSEIF '(' expr ')' ':' stmt_list
-                    ;
+/* альтернативный синтаксис: elseif (...): stmt_list */
+alt_else_if_stmts : %empty
+                  | alt_else_if_stmts T_ELSEIF '(' expr ')' ':' stmt_list
+                  ;
 
 /* ветки switch */
 case_list : %empty
