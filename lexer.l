@@ -35,6 +35,9 @@
     struct Interp { int depth; bool dollarExpr; };
     static std::vector<Interp> interps;
 
+    int lexerErrors = 0;
+    int lastToken = 0;
+
     void pushToken(int token);
     void pushString(int token, const std::string& text);
     int popPending();
@@ -382,7 +385,9 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     return T_VARIABLE;
 }
 \$[0-9][A-Za-z0-9_]* {
+    BEGIN(INITIAL);
     Console::Error("Invalid variable name '" + string(yytext) + "' at line " + std::to_string(yylineno));
+    lexerErrors++;
     return T_ERROR;
 }
 
@@ -471,7 +476,9 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
     /* число с мусорным хвостом всегда длиннее корректного числа на том же месте */
 ({NUMBER_ANY})[A-Za-z0-9_]+ {
+    BEGIN(INITIAL);
     Console::Error("Invalid numeric literal '" + string(yytext) + "' at line " + std::to_string(yylineno));
+    lexerErrors++;
     return T_ERROR;
 }
 
@@ -510,7 +517,9 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     yy_pop_state();
 }
 <COMMENT><<EOF>> {
+    BEGIN(INITIAL);
     Console::Error("Unterminated block comment starting at line " + std::to_string(commentBuf.getStartLine()));
+    lexerErrors++;
     return T_ERROR;
 }
 
@@ -535,7 +544,9 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     return T_CONSTANT_STRING;
 }
 <STRING_S><<EOF>> {
+    BEGIN(INITIAL);
     Console::Error("Unterminated single-quoted string starting at line " + std::to_string(stringBuf.getStartLine()));
+    lexerErrors++;
     return T_ERROR;
 }
 
@@ -673,7 +684,9 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     return popPending();
 }
 <INTERP_INDEX>(.|\n) {
+    BEGIN(INITIAL);
     Console::Error("Unexpected symbol '" + string(yytext) + "' in string offset at line " + std::to_string(yylineno));
+    lexerErrors++;
     return T_ERROR;
 }
 
@@ -723,11 +736,15 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 
 <STRING_D,INTERP_INDEX,INTERP_PROP><<EOF>> {
+    BEGIN(INITIAL);
     Console::Error("Unterminated double-quoted string at line " + std::to_string(yylineno));
+    lexerErrors++;
     return T_ERROR;
 }
 <IN_CURLY><<EOF>> {
+    BEGIN(INITIAL);
     Console::Error("Unterminated {$...} interpolation at line " + std::to_string(yylineno));
+    lexerErrors++;
     return T_ERROR;
 }
 
@@ -736,7 +753,9 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 [ \t\r\n]+ { }
 
 .   {
+    BEGIN(INITIAL);
     Console::Error("Unexpected symbol '" + string(yytext) + "' at line " + std::to_string(yylineno));
+    lexerErrors++;
     return T_ERROR;
 }
 
@@ -783,8 +802,9 @@ void startInterpolation(Buffer& stringBuf) {
 
 /* то, что видит парсер: сначала токены из очереди, затем следующее совпадение лексера */
 int yylex() {
-    if (!pendingTokens.empty()) return popPending();
-    return scanToken();
+    int token = !pendingTokens.empty() ? popPending() : scanToken();
+    lastToken = token;
+    return token;
 }
 
 /* %.14g даёт компактную запись*/

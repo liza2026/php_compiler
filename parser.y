@@ -10,6 +10,9 @@
 #include <string>
 #include "core/helpers/Console.h"
 
+extern int lastToken;
+int parserErrors = 0;
+
 int yylex();
 extern int yylineno;
 void yyerror(const char* msg);
@@ -126,6 +129,7 @@ stmt : ';'
      | T_FUNCTION is_reference T_ID '(' parameter_list_e ')' return_type block
      | modifiers_e T_CLASS T_ID class_heritage '{' class_member_list '}'
      | T_INTERFACE T_ID class_heritage '{' class_member_list '}'
+     | error ';'
      ;
 
 block : '{' stmt_list '}'
@@ -490,6 +494,7 @@ name : T_ID
 
 
 void yyerror(const char* msg) {
-    if (Console::HadErrors()) return;
+    if (lastToken == T_ERROR) return;   // лексер уже сообщил об этой ошибке
+    parserErrors++;
     fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
 }

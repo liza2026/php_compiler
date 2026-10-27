@@ -9,6 +9,8 @@
 extern FILE* yyin;
 extern int yyparse();
 extern int yydebug;
+extern int lexerErrors;
+extern int parserErrors;
 
 int main(int argc, char* argv[]) {
 
@@ -32,8 +34,11 @@ int main(int argc, char* argv[]) {
 
     fclose(yyin);
 
-    if (result == 0) {
-        printf("Parse OK\n");
+    if (result != 0 || lexerErrors > 0 || parserErrors > 0) {
+        fprintf(stderr, "\nCompilation failed: %d lexer error(s), %d parser error(s)\n",
+                lexerErrors, parserErrors);
+        return 1;
     }
-    return result;
+    printf("Parse OK\n");
+    return 0;
 }
