@@ -84,11 +84,6 @@ void yyerror(const char* msg);
 %precedence T_UNARY
 %right T_POW
 
-/* висячий else: else и elseif относятся к ближайшему if */
-%precedence T_NOELSE
-%precedence T_ELSEIF
-%precedence T_ELSE
-
 
 %%
 
@@ -118,7 +113,7 @@ stmt : ';'
      | T_FOREACH '(' expr T_AS foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
      | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' stmt
      | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
-     | if_without_else %prec T_NOELSE
+     | if_without_else
      | if_without_else T_ELSE stmt
      | alt_if_without_else T_ENDIF ';'
      | alt_if_without_else T_ELSE ':' stmt_list T_ENDIF ';'
