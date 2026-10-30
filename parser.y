@@ -135,8 +135,6 @@ stmt : ';'
 block : '{' stmt_list '}'
       ;
 
-/* Переменные и доступ к элементу массива */
-
 /* $a, $$a, ${expr}, $a[0], $o->p, $o?->p, $o->m(), $f(1), Foo::$x, Foo::$$x, Foo::bar() */
 variable : simple_variable
          | dereferenceable '[' expr_e ']'
@@ -146,21 +144,20 @@ variable : simple_variable
          | dereferenceable T_NULLSAFE_OBJECT_OPERATOR T_ID
          | dereferenceable T_NULLSAFE_OBJECT_OPERATOR simple_variable
          | dereferenceable T_NULLSAFE_OBJECT_OPERATOR '{' expr '}'
-         | dereferenceable argument_list_e
+         | dereferenceable argument_list_e /* f(1), $o->m()->n[0]() */
          | class_ref T_DOUBLE_COLON simple_variable
          | class_ref T_DOUBLE_COLON T_ID argument_list_e
          ;
 
-/* переменная по имени: $a, переменная-переменная $$a, $$$a, ${expr} (имя - значение выражения) */
 simple_variable : T_VARIABLE
-                | '$' simple_variable
-                | '$' '{' expr '}'
+                | '$' simple_variable /* $$a, $$$a */
+                | '$' '{' expr '}'    /* ${'a'.'b'} */
                 ;
 
 /* то, к чему можно применить [ ], -> и ( ): переменная, (выражение), foo(), new Foo() */
 dereferenceable : variable
-                | '(' expr ')'
-                | name argument_list_e
+                | '(' expr ')'              /* (new A)->b: скобки как основа цепочки */
+                | name argument_list_e      /* f(1) */
                 | T_NEW class_ref argument_list_e
                 ;
 
@@ -168,11 +165,9 @@ dereferenceable : variable
    parent, self - обычные имена */
 class_ref : name
           | T_STATIC
-          | simple_variable
-          | '(' expr ')'
+          | simple_variable              /* new $cls */
+          | '(' expr ')'                 /* new (getClass())(1) */
           ;
-
-/* Выражения */
 
 expr : T_LNUMBER
      | T_DNUMBER
@@ -237,11 +232,11 @@ expr : T_LNUMBER
      | expr T_LOGICAL_OR expr
      | expr T_LOGICAL_XOR expr
      | expr '?' expr ':' expr                  /* a ? b : c */
-     | expr '?' ':' expr %prec T_SHORT_TERNARY /* a ?: b */
-     | expr T_COALESCE expr                    /* a ?? b */
+     | expr '?' ':' expr %prec T_SHORT_TERNARY /* a ?: b: нужен свой уровень, иначе конфликт с полным ?: */
+     | expr T_COALESCE expr
      | T_MATCH '(' expr ')' '{' '}'
      | T_MATCH '(' expr ')' '{' match_arm_list possible_comma '}'
-     | T_PRINT expr %prec T_LOGICAL_AND
+     | T_PRINT expr %prec T_LOGICAL_AND /* print 1 and 2 == (print 1) and 2 */
      | T_THROW expr
      | T_NEW class_ref
      | expr T_INSTANCEOF class_ref
@@ -251,7 +246,7 @@ expr : T_LNUMBER
      | T_FUNCTION is_reference '(' parameter_list_e ')' T_USE '(' lexical_var_list possible_comma ')' return_type block
      | T_STATIC T_FUNCTION is_reference '(' parameter_list_e ')' return_type block
      | T_STATIC T_FUNCTION is_reference '(' parameter_list_e ')' T_USE '(' lexical_var_list possible_comma ')' return_type block
-     | T_FN is_reference '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
+     | T_FN is_reference '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN /* тело fn забирает всё до конца */
      | T_STATIC T_FN is_reference '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
      ;
 
@@ -265,12 +260,10 @@ expr_e : %empty
        | expr
        ;
 
-/* Массивы: [1, 2], array(1, 2), ['a' => 1], [new A(), new B()] */
-
 /* список элементов массива */
 array_items_opt : %empty
                 | array_items
-                | array_items ','
+                | array_items ',' /* висячая запятая */
                 ;
 
 array_items : expr
@@ -278,8 +271,6 @@ array_items : expr
             | array_items ',' expr
             | array_items ',' expr T_DOUBLE_ARROW expr
             ;
-
-/* Развилки: if/elseif/else, switch, match */
 
 /* цепочка elseif: elseif (...) stmt */
 else_if_stmts : %empty
@@ -306,8 +297,6 @@ match_arm_list : expr_list possible_comma T_DOUBLE_ARROW expr
                | match_arm_list ',' T_DEFAULT possible_comma T_DOUBLE_ARROW expr
                ;
 
-/* Циклы: while, do-while, for, foreach */
-
 for_exprs : %empty
           | expr_list
           ;
@@ -320,20 +309,17 @@ foreach_variable : variable
                  | T_LIST  '(' array_items_opt ')'
                  ;
 
-/* Функции: объявление, параметры, вызов */
-
 /* список параметров: [модификаторы] [тип] [&] [...]$имя [= значение] */
 parameter_list_e : %empty
                 | parameter_list possible_comma
                 ;
 
-
 parameter_list : parameter
                | parameter_list ',' parameter
                ;
 
-/* [модификаторы] [тип] [&] $имя = значение по умолчанию */
-/* [модификаторы] [тип] [&] ...$имя */
+/* [модификаторы] [тип] [&] $имя = значение по умолчанию
+   [модификаторы] [тип] [&] ...$имя */
 parameter : modifiers_e type_e is_reference T_VARIABLE
           | modifiers_e type_e is_reference T_VARIABLE '=' expr
           | modifiers_e type_e is_reference T_ELLIPSIS T_VARIABLE
@@ -352,10 +338,8 @@ type_e : %empty
 /* необязательный тип возврата */
 return_type : %empty
             | ':' type
-            | ':' T_STATIC
+            | ':' T_STATIC /* static как возвращаемый тип: function create(): static */
             ;
-
-/* Типы: int, ?string, int|float */
 
 /* тип: int, ?int, int|string|null */
 type : type_name
@@ -375,7 +359,7 @@ type_name : T_ARRAY
 /* аргументы в скобках */
 argument_list_e : '(' ')'
                 | '(' argument_list possible_comma ')'
-                | '(' T_ELLIPSIS ')'
+                | '(' T_ELLIPSIS ')' /* не пустой аргумент, а callable: $g = strlen(...); */
                 ;
 
 /* хотя бы один аргумент */
@@ -387,20 +371,16 @@ argument_list : expr
               | argument_list ',' T_ELLIPSIS expr
               ;
 
-/* Исключения: try / catch / finally, throw  */
-
 /* catch (A | B $e), catch (A) - переменная необязательна */
 catch_list_e : %empty
-             | catch_list_e T_CATCH '(' catch_types ')' block
-             | catch_list_e T_CATCH '(' catch_types T_VARIABLE ')' block
+             | catch_list_e T_CATCH '(' catch_types ')' block            /* catch (A) {}: переменная необязательна */
+             | catch_list_e T_CATCH '(' catch_types T_VARIABLE ')' block /* catch ($e) без типа — ошибка */
              ;
 
 /* типы исключений в catch */
 catch_types : name
             | catch_types '|' name
             ;
-
-/* Классы и интерфейсы: свойства, константы, методы, наследование */
 
 /* extends и implements */
 class_heritage : %empty
@@ -415,11 +395,11 @@ name_list : name
 
 /* члены класса и интерфейса */
 class_member_list : %empty
-                  | class_member_list member_modifiers type_e property_list ';'
+                  | class_member_list member_modifiers type_e property_list ';' /* свойство требует модификатор */
                   | class_member_list T_VAR type_e property_list ';'
                   | class_member_list modifiers_e T_CONST const_list ';'
                   | class_member_list modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type block
-                  | class_member_list modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';'
+                  | class_member_list modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';' /* abstract / интерфейс */
                   ;
 
 /* свойства через запятую */
@@ -449,8 +429,6 @@ identifier : T_ID
            | T_LOGICAL_AND | T_LOGICAL_OR | T_LOGICAL_XOR
            ;
 
-/* Модификаторы классов, членов класса и параметров-свойств конструктора */
-
 modifiers_e : %empty
             | member_modifiers
             ;
@@ -468,15 +446,10 @@ member_modifier : T_PUBLIC
                 | T_READONLY
                 ;
 
-/* Замыкания: use ($a, &$b) - захваченные переменные; пустой список use () недопустим */
-
-/* захваченные переменные */
+/* захваченные переменные use ($a, &$b) */
 lexical_var_list : is_reference T_VARIABLE
                  | lexical_var_list ',' is_reference T_VARIABLE
                  ;
-
-
-/* Общие вспомогательные правила */
 
 /* необязательная запятая в конце списка */
 possible_comma : %empty
@@ -494,7 +467,7 @@ name : T_ID
 
 
 void yyerror(const char* msg) {
-    if (lastToken == T_ERROR) return;   // лексер уже сообщил об этой ошибке
+    if (lastToken == T_ERROR) return;   /* лексер уже сообщил об этой ошибке */
     parserErrors++;
     fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
 }
