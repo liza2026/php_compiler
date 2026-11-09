@@ -63,7 +63,7 @@
    INTERP_INDEX  - [ключ] после $var внутри "..."
    INTERP_PROP   - ->свойство после $var внутри "..."
    Строка в двойных кавычках парсеру отдаётся как обычное выражение:
-     "abc"            -> T_CONSTANT_STRING
+     "abc"            -> CONSTANT_STRING
      "a $x b {$y} c"  -> ( "a " . ( $x ) . " b " . ( $y ) . " c" )
    то есть '"' и фрагменты строк в грамматике не нужны */
 
@@ -125,12 +125,12 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 <NOPHP>"<?=" {
     Console::Log("OpenTagEcho: <?=");
     BEGIN(INITIAL);
-    return T_ECHO;
+    return ECHO;
 }
 <NOPHP>([^<]|"<"[^?<])+|"<" {
     Console::Log("HTML text: \"" + string(yytext) + "\"");
     yylval.str = new std::string(yytext);
-    return T_INLINE_HTML;
+    return INLINE_HTML;
 }
 <NOPHP><<EOF>> { yyterminate(); }
 
@@ -172,130 +172,129 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 
 
     /* Ключевые слова */
-abstract        { Console::Log("Keyword: abstract"); return T_ABSTRACT; }
-array           { Console::Log("Keyword: array"); return T_ARRAY; }
-as              { Console::Log("Keyword: as"); return T_AS; }
-break           { Console::Log("Keyword: break"); return T_BREAK; }
-callable        { Console::Log("Keyword: callable"); return T_CALLABLE; }
-case            { Console::Log("Keyword: case"); return T_CASE; }
-catch           { Console::Log("Keyword: catch"); return T_CATCH; }
-class           { Console::Log("Keyword: class"); return T_CLASS; }
-clone           { Console::Log("Keyword: clone"); return T_CLONE; }
-const           { Console::Log("Keyword: const"); return T_CONST; }
-continue        { Console::Log("Keyword: continue"); return T_CONTINUE; }
-declare         { Console::Log("Keyword: declare"); return T_DECLARE; }
-default         { Console::Log("Keyword: default"); return T_DEFAULT; }
-do              { Console::Log("Keyword: do"); return T_DO; }
-echo            { Console::Log("Keyword: echo"); return T_ECHO; }
-else            { Console::Log("Keyword: else"); return T_ELSE; }
-elseif          { Console::Log("Keyword: elseif"); return T_ELSEIF; }
-empty           { Console::Log("Keyword: empty"); return T_EMPTY; }
-enddeclare      { Console::Log("Keyword: enddeclare"); return T_ENDDECLARE; }
-endfor          { Console::Log("Keyword: endfor"); return T_ENDFOR; }
-endforeach      { Console::Log("Keyword: endforeach"); return T_ENDFOREACH; }
-endif           { Console::Log("Keyword: endif"); return T_ENDIF; }
-endswitch       { Console::Log("Keyword: endswitch"); return T_ENDSWITCH; }
-endwhile        { Console::Log("Keyword: endwhile"); return T_ENDWHILE; }
-enum            { Console::Log("Keyword: enum"); return T_ENUM; }
-eval            { Console::Log("Keyword: eval"); return T_EVAL; }
-exit|die        { Console::Log("Keyword: exit"); return T_EXIT; }
-extends         { Console::Log("Keyword: extends"); return T_EXTENDS; }
-final           { Console::Log("Keyword: final"); return T_FINAL; }
-finally         { Console::Log("Keyword: finally"); return T_FINALLY; }
-fn              { Console::Log("Keyword: fn"); return T_FN; }
-for             { Console::Log("Keyword: for"); return T_FOR; }
-foreach         { Console::Log("Keyword: foreach"); return T_FOREACH; }
-function        { Console::Log("Keyword: function"); return T_FUNCTION; }
-global          { Console::Log("Keyword: global"); return T_GLOBAL; }
-goto            { Console::Log("Keyword: goto"); return T_GOTO; }
-if              { Console::Log("Keyword: if"); return T_IF; }
-implements      { Console::Log("Keyword: implements"); return T_IMPLEMENTS; }
-include         { Console::Log("Keyword: include"); return T_INCLUDE; }
-include_once    { Console::Log("Keyword: include_once"); return T_INCLUDE_ONCE; }
-instanceof      { Console::Log("Keyword: instanceof"); return T_INSTANCEOF; }
-insteadof       { Console::Log("Keyword: insteadof"); return T_INSTEADOF; }
-interface       { Console::Log("Keyword: interface"); return T_INTERFACE; }
-isset           { Console::Log("Keyword: isset"); return T_ISSET; }
-list            { Console::Log("Keyword: list"); return T_LIST; }
-match           { Console::Log("Keyword: match"); return T_MATCH; }
-namespace       { Console::Log("Keyword: namespace"); return T_NAMESPACE; }
-new             { Console::Log("Keyword: new"); return T_NEW; }
-print           { Console::Log("Keyword: print"); return T_PRINT; }
-private         { Console::Log("Keyword: private"); return T_PRIVATE; }
-protected       { Console::Log("Keyword: protected"); return T_PROTECTED; }
-public          { Console::Log("Keyword: public"); return T_PUBLIC; }
-readonly        { Console::Log("Keyword: readonly"); return T_READONLY; }
-require         { Console::Log("Keyword: require"); return T_REQUIRE; }
-require_once    { Console::Log("Keyword: require_once"); return T_REQUIRE_ONCE; }
-return          { Console::Log("Keyword: return"); return T_RETURN; }
-static          { Console::Log("Keyword: static"); return T_STATIC; }
-switch          { Console::Log("Keyword: switch"); return T_SWITCH; }
-throw           { Console::Log("Keyword: throw"); return T_THROW; }
-trait           { Console::Log("Keyword: trait"); return T_TRAIT; }
-try             { Console::Log("Keyword: try"); return T_TRY; }
-unset           { Console::Log("Keyword: unset"); return T_UNSET; }
-use             { Console::Log("Keyword: use"); return T_USE; }
-var             { Console::Log("Keyword: var"); return T_VAR; }
-while           { Console::Log("Keyword: while"); return T_WHILE; }
-yield           { Console::Log("Keyword: yield"); return T_YIELD; }
-yield[ \t\r\n]+from { Console::Log("Keyword: yield from"); return T_YIELD_FROM; }
+abstract        { Console::Log("Keyword: abstract"); return ABSTRACT; }
+array           { Console::Log("Keyword: array"); return ARRAY; }
+as              { Console::Log("Keyword: as"); return AS; }
+break           { Console::Log("Keyword: break"); return BREAK; }
+callable        { Console::Log("Keyword: callable"); return CALLABLE; }
+case            { Console::Log("Keyword: case"); return CASE; }
+catch           { Console::Log("Keyword: catch"); return CATCH; }
+class           { Console::Log("Keyword: class"); return CLASS; }
+clone           { Console::Log("Keyword: clone"); return CLONE; }
+const           { Console::Log("Keyword: const"); return CONST; }
+continue        { Console::Log("Keyword: continue"); return CONTINUE; }
+declare         { Console::Log("Keyword: declare"); return DECLARE; }
+default         { Console::Log("Keyword: default"); return DEFAULT; }
+do              { Console::Log("Keyword: do"); return DO; }
+echo            { Console::Log("Keyword: echo"); return ECHO; }
+else            { Console::Log("Keyword: else"); return ELSE; }
+elseif          { Console::Log("Keyword: elseif"); return ELSEIF; }
+empty           { Console::Log("Keyword: empty"); return EMPTY; }
+enddeclare      { Console::Log("Keyword: enddeclare"); return ENDDECLARE; }
+endfor          { Console::Log("Keyword: endfor"); return ENDFOR; }
+endforeach      { Console::Log("Keyword: endforeach"); return ENDFOREACH; }
+endif           { Console::Log("Keyword: endif"); return ENDIF; }
+endswitch       { Console::Log("Keyword: endswitch"); return ENDSWITCH; }
+endwhile        { Console::Log("Keyword: endwhile"); return ENDWHILE; }
+enum            { Console::Log("Keyword: enum"); return ENUM; }
+eval            { Console::Log("Keyword: eval"); return EVAL; }
+exit|die        { Console::Log("Keyword: exit"); return EXIT; }
+extends         { Console::Log("Keyword: extends"); return EXTENDS; }
+final           { Console::Log("Keyword: final"); return FINAL; }
+finally         { Console::Log("Keyword: finally"); return FINALLY; }
+fn              { Console::Log("Keyword: fn"); return FN; }
+for             { Console::Log("Keyword: for"); return FOR; }
+foreach         { Console::Log("Keyword: foreach"); return FOREACH; }
+function        { Console::Log("Keyword: function"); return FUNCTION; }
+global          { Console::Log("Keyword: global"); return GLOBAL; }
+goto            { Console::Log("Keyword: goto"); return GOTO; }
+if              { Console::Log("Keyword: if"); return IF; }
+implements      { Console::Log("Keyword: implements"); return IMPLEMENTS; }
+include         { Console::Log("Keyword: include"); return INCLUDE; }
+include_once    { Console::Log("Keyword: include_once"); return INCLUDE_ONCE; }
+instanceof      { Console::Log("Keyword: instanceof"); return INSTANCEOF; }
+insteadof       { Console::Log("Keyword: insteadof"); return INSTEADOF; }
+interface       { Console::Log("Keyword: interface"); return INTERFACE; }
+isset           { Console::Log("Keyword: isset"); return ISSET; }
+list            { Console::Log("Keyword: list"); return LIST; }
+match           { Console::Log("Keyword: match"); return MATCH; }
+namespace       { Console::Log("Keyword: namespace"); return NAMESPACE; }
+new             { Console::Log("Keyword: new"); return NEW; }
+print           { Console::Log("Keyword: print"); return PRINT; }
+private         { Console::Log("Keyword: private"); return PRIVATE; }
+protected       { Console::Log("Keyword: protected"); return PROTECTED; }
+public          { Console::Log("Keyword: public"); return PUBLIC; }
+readonly        { Console::Log("Keyword: readonly"); return READONLY; }
+require         { Console::Log("Keyword: require"); return REQUIRE; }
+require_once    { Console::Log("Keyword: require_once"); return REQUIRE_ONCE; }
+return          { Console::Log("Keyword: return"); return RETURN; }
+static          { Console::Log("Keyword: static"); return STATIC; }
+switch          { Console::Log("Keyword: switch"); return SWITCH; }
+throw           { Console::Log("Keyword: throw"); return THROW; }
+trait           { Console::Log("Keyword: trait"); return TRAIT; }
+try             { Console::Log("Keyword: try"); return TRY; }
+unset           { Console::Log("Keyword: unset"); return UNSET; }
+use             { Console::Log("Keyword: use"); return USE; }
+var             { Console::Log("Keyword: var"); return VAR; }
+while           { Console::Log("Keyword: while"); return WHILE; }
+yield           { Console::Log("Keyword: yield"); return YIELD; }
+yield[ \t\r\n]+from { Console::Log("Keyword: yield from"); return YIELD_FROM; }
 
     /* Ключевые слова, являющиеся операторами */
-and             { Console::Log("Operator: and"); return T_LOGICAL_AND; }
-or              { Console::Log("Operator: or"); return T_LOGICAL_OR; }
-xor             { Console::Log("Operator: xor"); return T_LOGICAL_XOR; }
+and             { Console::Log("Operator: and"); return LOGICAL_AND; }
+or              { Console::Log("Operator: or"); return LOGICAL_OR; }
+xor             { Console::Log("Operator: xor"); return LOGICAL_XOR; }
 
     /* Константы */
-true            { Console::Log("Boolean: true"); return T_TRUE; }
-false           { Console::Log("Boolean: false"); return T_FALSE; }
-null            { Console::Log("Null: null"); return T_NULL; }
+true            { Console::Log("Boolean: true"); return TRUE; }
+false           { Console::Log("Boolean: false"); return FALSE; }
+null            { Console::Log("Null: null"); return NULLPTR; }
 __(line|file|dir|function|class|method|namespace|trait)__ {
     Console::Log("MagicConstant: " + string(yytext));
     yylval.str = new std::string(yytext);
-    return T_MAGIC_CONST;
+    return MAGIC_CONST;
 }
 
     /* Приведения типов: (int) (string) ... */
-"("[ \t]*(int|integer)[ \t]*")"     { Console::Log("Cast: (int)"); return T_INT_CAST; }
-"("[ \t]*(float|double)[ \t]*")"    { Console::Log("Cast: (float)"); return T_DOUBLE_CAST; }
-"("[ \t]*(string|binary)[ \t]*")"   { Console::Log("Cast: (string)"); return T_STRING_CAST; }
-"("[ \t]*array[ \t]*")"             { Console::Log("Cast: (array)"); return T_ARRAY_CAST; }
-"("[ \t]*object[ \t]*")"            { Console::Log("Cast: (object)"); return T_OBJECT_CAST; }
-"("[ \t]*(bool|boolean)[ \t]*")"    { Console::Log("Cast: (bool)"); return T_BOOL_CAST; }
+"("[ \t]*(int|integer)[ \t]*")"     { Console::Log("Cast: (int)"); return INT_CAST; }
+"("[ \t]*(float|double)[ \t]*")"    { Console::Log("Cast: (float)"); return DOUBLE_CAST; }
+"("[ \t]*(string|binary)[ \t]*")"   { Console::Log("Cast: (string)"); return STRING_CAST; }
+"("[ \t]*array[ \t]*")"             { Console::Log("Cast: (array)"); return ARRAY_CAST; }
+"("[ \t]*object[ \t]*")"            { Console::Log("Cast: (object)"); return OBJECT_CAST; }
+"("[ \t]*(bool|boolean)[ \t]*")"    { Console::Log("Cast: (bool)"); return BOOL_CAST; }
 
 
     /* Операторы */
-    /* Операторы */
-"..."   { Console::Log("Operator: ..."); return T_ELLIPSIS; }
-"**="   { Console::Log("Operator: **="); return T_POW_EQUAL; }
-"<=>"   { Console::Log("Operator: <=>"); return T_SPACESHIP; }
-"??="   { Console::Log("Operator: ?" "?="); return T_COALESCE_EQUAL; }
-"==="   { Console::Log("Operator: ==="); return T_IS_IDENTICAL; }
-"!=="   { Console::Log("Operator: !=="); return T_IS_NOT_IDENTICAL; }
-"=="    { Console::Log("Operator: =="); return T_IS_EQUAL; }
-"!="|"<>" { Console::Log("Operator: !="); return T_IS_NOT_EQUAL; }
-"<="    { Console::Log("Operator: <="); return T_IS_SMALLER_OR_EQUAL; }
-">="    { Console::Log("Operator: >="); return T_IS_GREATER_OR_EQUAL; }
-"&&"    { Console::Log("Operator: &&"); return T_BOOLEAN_AND; }
-"||"    { Console::Log("Operator: ||"); return T_BOOLEAN_OR; }
-"??"    { Console::Log("Operator: ??"); return T_COALESCE; }
-"=>"    { Console::Log("Operator: =>"); return T_DOUBLE_ARROW; }
-"++"    { Console::Log("Operator: ++"); return T_INC; }
-"--"    { Console::Log("Operator: --"); return T_DEC; }
-"**"    { Console::Log("Operator: **"); return T_POW; }
-"+="    { Console::Log("Operator: +="); return T_PLUS_EQUAL; }
-"-="    { Console::Log("Operator: -="); return T_MINUS_EQUAL; }
-"*="    { Console::Log("Operator: *="); return T_MUL_EQUAL; }
-"/="    { Console::Log("Operator: /="); return T_DIV_EQUAL; }
-".="    { Console::Log("Operator: .="); return T_CONCAT_EQUAL; }
-"%="    { Console::Log("Operator: %="); return T_MOD_EQUAL; }
-"&="    { Console::Log("Operator: &="); return T_AND_EQUAL; }
-"|="    { Console::Log("Operator: |="); return T_OR_EQUAL; }
-"^="    { Console::Log("Operator: ^="); return T_XOR_EQUAL; }
-"<<="   { Console::Log("Operator: <<="); return T_SL_EQUAL; }
-">>="   { Console::Log("Operator: >>="); return T_SR_EQUAL; }
-"<<"    { Console::Log("Operator: <<"); return T_SL; }
-">>"    { Console::Log("Operator: >>"); return T_SR; }
+"..."   { Console::Log("Operator: ..."); return ELLIPSIS; }
+"**="   { Console::Log("Operator: **="); return POW_EQUAL; }
+"<=>"   { Console::Log("Operator: <=>"); return SPACESHIP; }
+"??="   { Console::Log("Operator: ?" "?="); return COALESCE_EQUAL; }
+"==="   { Console::Log("Operator: ==="); return IS_IDENTICAL; }
+"!=="   { Console::Log("Operator: !=="); return IS_NOT_IDENTICAL; }
+"=="    { Console::Log("Operator: =="); return IS_EQUAL; }
+"!="|"<>" { Console::Log("Operator: !="); return IS_NOT_EQUAL; }
+"<="    { Console::Log("Operator: <="); return IS_SMALLER_OR_EQUAL; }
+">="    { Console::Log("Operator: >="); return IS_GREATER_OR_EQUAL; }
+"&&"    { Console::Log("Operator: &&"); return BOOLEAN_AND; }
+"||"    { Console::Log("Operator: ||"); return BOOLEAN_OR; }
+"??"    { Console::Log("Operator: ??"); return COALESCE; }
+"=>"    { Console::Log("Operator: =>"); return DOUBLE_ARROW; }
+"++"    { Console::Log("Operator: ++"); return INC; }
+"--"    { Console::Log("Operator: --"); return DEC; }
+"**"    { Console::Log("Operator: **"); return POW; }
+"+="    { Console::Log("Operator: +="); return PLUS_EQUAL; }
+"-="    { Console::Log("Operator: -="); return MINUS_EQUAL; }
+"*="    { Console::Log("Operator: *="); return MUL_EQUAL; }
+"/="    { Console::Log("Operator: /="); return DIV_EQUAL; }
+".="    { Console::Log("Operator: .="); return CONCAT_EQUAL; }
+"%="    { Console::Log("Operator: %="); return MOD_EQUAL; }
+"&="    { Console::Log("Operator: &="); return AND_EQUAL; }
+"|="    { Console::Log("Operator: |="); return OR_EQUAL; }
+"^="    { Console::Log("Operator: ^="); return XOR_EQUAL; }
+"<<="   { Console::Log("Operator: <<="); return SL_EQUAL; }
+">>="   { Console::Log("Operator: >>="); return SR_EQUAL; }
+"<<"    { Console::Log("Operator: <<"); return SL; }
+">>"    { Console::Log("Operator: >>"); return SR; }
 
     /* Односимвольные операторы и разделители */
 [-+*/%.=<>!?&|^~@] {
@@ -320,7 +319,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 }
 "#[" {
     Console::Log("AttributeOpen: #[");
-    return T_ATTRIBUTE;
+    return ATTRIBUTE;
 }
 
 
@@ -328,24 +327,24 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 "->" {
     Console::Log("Operator: ->");
     yy_push_state(MEMBER);
-    return T_OBJECT_OPERATOR;
+    return OBJECT_OPERATOR;
 }
 "?->" {
     Console::Log("Operator: ?->");
     yy_push_state(MEMBER);
-    return T_NULLSAFE_OBJECT_OPERATOR;
+    return NULLSAFE_OBJECT_OPERATOR;
 }
 "::" {
     Console::Log("Operator: ::");
     yy_push_state(MEMBER);
-    return T_DOUBLE_COLON;
+    return DOUBLE_COLON;
 }
 
 <MEMBER>{LABEL} {
     Console::Log("Identifier: " + string(yytext));
     yylval.str = new std::string(yytext);
     yy_pop_state();
-    return T_ID;
+    return ID;
 }
 <MEMBER>[ \t\r\n]+ { }
 <MEMBER>. {
@@ -362,33 +361,33 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 {LABEL} {
     Console::Log("Identifier: " + string(yytext));
     yylval.str = new std::string(yytext);
-    return T_ID;
+    return ID;
 }
 {NAME_RELATIVE} {
     Console::Log("Identifier (relative): " + string(yytext));
     yylval.str = new std::string(yytext);
-    return T_NAME_RELATIVE;
+    return NAME_RELATIVE;
 }
 {NAME_QUALIFIED} {
     Console::Log("Identifier (qualified): " + string(yytext));
     yylval.str = new std::string(yytext);
-    return T_NAME_QUALIFIED;
+    return NAME_QUALIFIED;
 }
 {NAME_FULLY_QUALIFIED} {
     Console::Log("Identifier (fully qualified): " + string(yytext));
     yylval.str = new std::string(yytext);
-    return T_NAME_FULLY_QUALIFIED;
+    return NAME_FULLY_QUALIFIED;
 }
 {VARIABLE} {
     Console::Log("Variable: " + string(yytext));
     yylval.str = new std::string(yytext + 1);
-    return T_VARIABLE;
+    return VARIABLE;
 }
 \$[0-9][A-Za-z0-9_]* {
     BEGIN(INITIAL);
     Console::Error("Invalid variable name '" + string(yytext) + "' at line " + std::to_string(yylineno));
     lexerErrors++;
-    return T_ERROR;
+    return ERROR;
 }
 
 
@@ -397,7 +396,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     double value = std::strtod(stripUnderscores(yytext).c_str(), nullptr);
     Console::Log("Float: " + formatDouble(value));
     yylval.dval = value;
-    return T_DNUMBER;
+    return DNUMBER;
 }
 {INT_HEX} {
     std::string int_str = stripUnderscores(yytext).substr(2);
@@ -405,13 +404,13 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
         double value = calcBigInteger(int_str, 16);
         Console::Log("Float: " + formatDouble(value));
         yylval.dval = value;
-        return T_DNUMBER;
+        return DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 16);
         Console::Log("Integer (hex): " + std::to_string(value));
         yylval.ival = value;
-        return T_LNUMBER;
+        return LNUMBER;
     }
 }
 {INT_BIN} {
@@ -420,13 +419,13 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
         double value = calcBigInteger(int_str, 2);
         Console::Log("Float: " + formatDouble(value));
         yylval.dval = value;
-        return T_DNUMBER;
+        return DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 2);
         Console::Log("Integer (binary): " + std::to_string(value));
         yylval.ival = value;
-        return T_LNUMBER;
+        return LNUMBER;
     }
 }
 {INT_OCT_NEW} {
@@ -435,13 +434,13 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
         double value = calcBigInteger(int_str, 8);
         Console::Log("Float: " + formatDouble(value));
         yylval.dval = value;
-        return T_DNUMBER;
+        return DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 8);
         Console::Log("Integer (octal): " + std::to_string(value));
         yylval.ival = value;
-        return T_LNUMBER;
+        return LNUMBER;
     }
 }
 {INT_OCT_OLD} {
@@ -450,13 +449,13 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
         double value = calcBigInteger(int_str, 8);
         Console::Log("Float: " + formatDouble(value));
         yylval.dval = value;
-        return T_DNUMBER;
+        return DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 8);
         Console::Log("Integer (octal): " + std::to_string(value));
         yylval.ival = value;
-        return T_LNUMBER;
+        return LNUMBER;
     }
 }
 {INTEGER} {
@@ -465,13 +464,13 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
         double value = calcBigInteger(int_str, 10);
         Console::Log("Float: " + formatDouble(value));
         yylval.dval = value;
-        return T_DNUMBER;
+        return DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 10);
         Console::Log("Integer: " + std::to_string(value));
         yylval.ival = value;
-        return T_LNUMBER;
+        return LNUMBER;
     }
 }
     /* число с мусорным хвостом всегда длиннее корректного числа на том же месте */
@@ -479,7 +478,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     BEGIN(INITIAL);
     Console::Error("Invalid numeric literal '" + string(yytext) + "' at line " + std::to_string(yylineno));
     lexerErrors++;
-    return T_ERROR;
+    return ERROR;
 }
 
 
@@ -520,7 +519,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     BEGIN(INITIAL);
     Console::Error("Unterminated block comment starting at line " + std::to_string(commentBuf.getStartLine()));
     lexerErrors++;
-    return T_ERROR;
+    return ERROR;
 }
 
 
@@ -541,17 +540,17 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     yylval.str = new std::string(stringBuf.current());
     stringBuf.reset();
     yy_pop_state();
-    return T_CONSTANT_STRING;
+    return CONSTANT_STRING;
 }
 <STRING_S><<EOF>> {
     BEGIN(INITIAL);
     Console::Error("Unterminated single-quoted string starting at line " + std::to_string(stringBuf.getStartLine()));
     lexerErrors++;
-    return T_ERROR;
+    return ERROR;
 }
 
 
-    /* Строки в двойных кавычках: без вставок это один токен T_CONSTANT_STRING, со вставками -
+    /* Строки в двойных кавычках: без вставок это один токен CONSTANT_STRING, со вставками -
        ( "фрагмент" . ( вставка ) . "фрагмент" ); пустой фрагмент в начале нужен, чтобы результат был строкой */
 \" {
     Console::Log("StringStart (line " + std::to_string(yylineno) + ")");
@@ -567,11 +566,11 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     yy_pop_state();
     if (!hasInterp) {
         Console::Log("String literal (line " + std::to_string(stringBuf.getStartLine()) + "): \"" + stringBuf.current() + "\"");
-        pushString(T_CONSTANT_STRING, stringBuf.current());
+        pushString(CONSTANT_STRING, stringBuf.current());
     } else {
         if (!stringBuf.current().empty()) {
             pushToken('.');
-            pushString(T_CONSTANT_STRING, stringBuf.current());
+            pushString(CONSTANT_STRING, stringBuf.current());
         }
         pushToken(')');
     }
@@ -618,28 +617,28 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 <STRING_D>{VARIABLE}/"[" {
     Console::Log("Variable: " + string(yytext));
     startInterpolation(stringBuf);
-    pushString(T_VARIABLE, yytext + 1);
+    pushString(VARIABLE, yytext + 1);
     yy_push_state(INTERP_INDEX);
     return popPending();
 }
 <STRING_D>{VARIABLE}/"->"[A-Za-z_\x80-\xff] {
     Console::Log("Variable: " + string(yytext));
     startInterpolation(stringBuf);
-    pushString(T_VARIABLE, yytext + 1);
+    pushString(VARIABLE, yytext + 1);
     yy_push_state(INTERP_PROP);
     return popPending();
 }
 <STRING_D>{VARIABLE}/"?->"[A-Za-z_\x80-\xff] {
     Console::Log("Variable: " + string(yytext));
     startInterpolation(stringBuf);
-    pushString(T_VARIABLE, yytext + 1);
+    pushString(VARIABLE, yytext + 1);
     yy_push_state(INTERP_PROP);
     return popPending();
 }
 <STRING_D>{VARIABLE} {
     Console::Log("Variable: " + string(yytext));
     startInterpolation(stringBuf);
-    pushString(T_VARIABLE, yytext + 1);
+    pushString(VARIABLE, yytext + 1);
     pushToken(')');
     return popPending();
 }
@@ -652,7 +651,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 <INTERP_INDEX>{LABEL} {
     Console::Log("String key: " + string(yytext));
     yylval.str = new std::string(yytext);
-    return T_CONSTANT_STRING;
+    return CONSTANT_STRING;
 }
 <INTERP_INDEX>"-" {
     Console::Log("Operator: -");
@@ -664,17 +663,17 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
         // как в PHP: слишком большое число в "$a[...]" - это строковый ключ
         Console::Log("String key: " + string(yytext));
         yylval.str = new std::string(yytext);
-        return T_CONSTANT_STRING;
+        return CONSTANT_STRING;
     }
     long long value = std::strtoll(int_str.c_str(), nullptr, 10);
     Console::Log("Integer: " + std::to_string(value));
     yylval.ival = value;
-    return T_LNUMBER;
+    return LNUMBER;
 }
 <INTERP_INDEX>{VARIABLE} {
     Console::Log("Variable: " + string(yytext));
     yylval.str = new std::string(yytext + 1);
-    return T_VARIABLE;
+    return VARIABLE;
 }
 <INTERP_INDEX>"]" {
     Console::Log("Separator: ]");
@@ -687,21 +686,21 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     BEGIN(INITIAL);
     Console::Error("Unexpected symbol '" + string(yytext) + "' in string offset at line " + std::to_string(yylineno));
     lexerErrors++;
-    return T_ERROR;
+    return ERROR;
 }
 
 <INTERP_PROP>"->" {
     Console::Log("Operator: ->");
-    return T_OBJECT_OPERATOR;
+    return OBJECT_OPERATOR;
 }
 <INTERP_PROP>"?->" {
     Console::Log("Operator: ?->");
-    return T_NULLSAFE_OBJECT_OPERATOR;
+    return NULLSAFE_OBJECT_OPERATOR;
 }
 <INTERP_PROP>{LABEL} {
     Console::Log("Identifier: " + string(yytext));
     yy_pop_state();
-    pushString(T_ID, yytext);
+    pushString(ID, yytext);
     pushToken(')');
     return popPending();
 }
@@ -719,7 +718,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
 <STRING_D>"${"{LABEL}/[\[}] {
     Console::Log("InterpolationStart: ${");
     startInterpolation(stringBuf);
-    pushString(T_VARIABLE, yytext + 2);
+    pushString(VARIABLE, yytext + 2);
     interps.push_back({0, false});
     yy_push_state(IN_CURLY);
     return popPending();
@@ -739,13 +738,13 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     BEGIN(INITIAL);
     Console::Error("Unterminated double-quoted string at line " + std::to_string(yylineno));
     lexerErrors++;
-    return T_ERROR;
+    return ERROR;
 }
 <IN_CURLY><<EOF>> {
     BEGIN(INITIAL);
     Console::Error("Unterminated {$...} interpolation at line " + std::to_string(yylineno));
     lexerErrors++;
-    return T_ERROR;
+    return ERROR;
 }
 
 
@@ -756,7 +755,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     BEGIN(INITIAL);
     Console::Error("Unexpected symbol '" + string(yytext) + "' at line " + std::to_string(yylineno));
     lexerErrors++;
-    return T_ERROR;
+    return ERROR;
 }
 
 %%
@@ -768,7 +767,7 @@ void pushToken(int token) {
     pendingTokens.push_back(pending);
 }
 
-/* токен со строковым значением (T_CONSTANT_STRING, T_VARIABLE, T_ID) - в конец очереди */
+/* токен со строковым значением (CONSTANT_STRING, VARIABLE, ID) - в конец очереди */
 void pushString(int token, const std::string& text) {
     PendingToken pending;
     pending.token = token;
@@ -790,10 +789,10 @@ void startInterpolation(Buffer& stringBuf) {
     if (!stringHasInterp.back()) {
         stringHasInterp.back() = true;
         pushToken('(');
-        pushString(T_CONSTANT_STRING, stringBuf.current());
+        pushString(CONSTANT_STRING, stringBuf.current());
     } else if (!stringBuf.current().empty()) {
         pushToken('.');
-        pushString(T_CONSTANT_STRING, stringBuf.current());
+        pushString(CONSTANT_STRING, stringBuf.current());
     }
     stringBuf.reset();
     pushToken('.');

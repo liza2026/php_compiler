@@ -27,65 +27,65 @@ void yyerror(const char* msg);
 %start program
 
 /* Токены */
-%token <str>  T_VARIABLE T_INLINE_HTML T_CONSTANT_STRING
-%token <str>  T_ID T_NAME_QUALIFIED T_NAME_FULLY_QUALIFIED T_NAME_RELATIVE T_MAGIC_CONST
-%token <ival> T_LNUMBER
-%token <dval> T_DNUMBER
-%token T_ERROR
+%token <str>  VARIABLE INLINE_HTML CONSTANT_STRING
+%token <str>  ID NAME_QUALIFIED NAME_FULLY_QUALIFIED NAME_RELATIVE MAGIC_CONST
+%token <ival> LNUMBER
+%token <dval> DNUMBER
+%token ERROR
 
 /* Ключевые слова и константы */
-%token T_ECHO T_ARRAY T_TRUE T_FALSE T_NULL
-%token T_ABSTRACT T_AS T_BREAK T_CALLABLE T_CASE T_CATCH T_CLASS T_CLONE T_CONST T_CONTINUE
-%token T_DECLARE T_DEFAULT T_DO T_ELSE T_ELSEIF T_EMPTY
-%token T_ENDDECLARE T_ENDFOR T_ENDFOREACH T_ENDIF T_ENDSWITCH T_ENDWHILE
-%token T_ENUM T_EVAL T_EXIT T_EXTENDS T_FINAL T_FINALLY T_FN T_FOR T_FOREACH T_FUNCTION
-%token T_GLOBAL T_GOTO T_IF T_IMPLEMENTS T_INCLUDE T_INCLUDE_ONCE T_INSTANCEOF T_INSTEADOF
-%token T_INTERFACE T_ISSET T_LIST T_MATCH T_NAMESPACE T_NEW T_PRINT
-%token T_PRIVATE T_PROTECTED T_PUBLIC T_READONLY T_REQUIRE T_REQUIRE_ONCE T_RETURN
-%token T_STATIC T_SWITCH T_THROW T_TRAIT T_TRY T_UNSET T_USE T_VAR T_WHILE T_YIELD T_YIELD_FROM
+%token ECHO ARRAY TRUE FALSE NULLPTR
+%token ABSTRACT AS BREAK CALLABLE CASE CATCH CLASS CLONE CONST CONTINUE
+%token DECLARE DEFAULT DO ELSE ELSEIF EMPTY
+%token ENDDECLARE ENDFOR ENDFOREACH ENDIF ENDSWITCH ENDWHILE
+%token ENUM EVAL EXIT EXTENDS FINAL FINALLY FN FOR FOREACH FUNCTION
+%token GLOBAL GOTO IF IMPLEMENTS INCLUDE INCLUDE_ONCE INSTANCEOF INSTEADOF
+%token INTERFACE ISSET LIST MATCH NAMESPACE NEW PRINT
+%token PRIVATE PROTECTED PUBLIC READONLY REQUIRE REQUIRE_ONCE RETURN
+%token STATIC SWITCH THROW TRAIT TRY UNSET USE VAR WHILE YIELD YIELD_FROM
 
 /* Приведения типов, обращение к члену класса, атрибуты */
-%token T_INT_CAST T_DOUBLE_CAST T_STRING_CAST T_ARRAY_CAST T_OBJECT_CAST T_BOOL_CAST
-%token T_OBJECT_OPERATOR T_NULLSAFE_OBJECT_OPERATOR T_DOUBLE_COLON T_ATTRIBUTE
+%token INT_CAST DOUBLE_CAST STRING_CAST ARRAY_CAST OBJECT_CAST BOOL_CAST
+%token OBJECT_OPERATOR NULLSAFE_OBJECT_OPERATOR DOUBLE_COLON ATTRIBUTE
 
 /* Операторы из нескольких символов */
-%token T_ELLIPSIS T_DOUBLE_ARROW
-%token T_INC T_DEC T_POW
-%token T_SPACESHIP T_COALESCE
-%token T_IS_EQUAL T_IS_NOT_EQUAL T_IS_IDENTICAL T_IS_NOT_IDENTICAL
-%token T_IS_SMALLER_OR_EQUAL T_IS_GREATER_OR_EQUAL
-%token T_BOOLEAN_AND T_BOOLEAN_OR
-%token T_LOGICAL_AND T_LOGICAL_OR T_LOGICAL_XOR
-%token T_SL T_SR
-%token T_PLUS_EQUAL T_MINUS_EQUAL T_MUL_EQUAL T_DIV_EQUAL T_CONCAT_EQUAL T_MOD_EQUAL
-%token T_POW_EQUAL T_AND_EQUAL T_OR_EQUAL T_XOR_EQUAL T_SL_EQUAL T_SR_EQUAL T_COALESCE_EQUAL
+%token ELLIPSIS DOUBLE_ARROW
+%token INC DEC POW
+%token SPACESHIP COALESCE
+%token IS_EQUAL IS_NOT_EQUAL IS_IDENTICAL IS_NOT_IDENTICAL
+%token IS_SMALLER_OR_EQUAL IS_GREATER_OR_EQUAL
+%token BOOLEAN_AND BOOLEAN_OR
+%token LOGICAL_AND LOGICAL_OR LOGICAL_XOR
+%token SL SR
+%token PLUS_EQUAL MINUS_EQUAL MUL_EQUAL DIV_EQUAL CONCAT_EQUAL MOD_EQUAL
+%token POW_EQUAL AND_EQUAL OR_EQUAL XOR_EQUAL SL_EQUAL SR_EQUAL COALESCE_EQUAL
 
 
 /* Приоритеты */
-%precedence T_THROW T_FN
-%left  T_LOGICAL_OR
-%left  T_LOGICAL_XOR
-%left  T_LOGICAL_AND
-%right '=' T_PLUS_EQUAL T_MINUS_EQUAL T_MUL_EQUAL T_DIV_EQUAL T_CONCAT_EQUAL T_MOD_EQUAL
-       T_POW_EQUAL T_AND_EQUAL T_OR_EQUAL T_XOR_EQUAL T_SL_EQUAL T_SR_EQUAL T_COALESCE_EQUAL
+%precedence THROW FN
+%left  LOGICAL_OR
+%left  LOGICAL_XOR
+%left  LOGICAL_AND
+%right '=' PLUS_EQUAL MINUS_EQUAL MUL_EQUAL DIV_EQUAL CONCAT_EQUAL MOD_EQUAL
+       POW_EQUAL AND_EQUAL OR_EQUAL XOR_EQUAL SL_EQUAL SR_EQUAL COALESCE_EQUAL
 %nonassoc '?' ':'
-%left  T_SHORT_TERNARY
-%right T_COALESCE
-%left  T_BOOLEAN_OR
-%left  T_BOOLEAN_AND
+%left  SHORT_TERNARY
+%right COALESCE
+%left  BOOLEAN_OR
+%left  BOOLEAN_AND
 %left  '|'
 %left  '^'
 %left  '&'
-%nonassoc T_IS_EQUAL T_IS_NOT_EQUAL T_IS_IDENTICAL T_IS_NOT_IDENTICAL T_SPACESHIP
-%nonassoc '<' T_IS_SMALLER_OR_EQUAL '>' T_IS_GREATER_OR_EQUAL
+%nonassoc IS_EQUAL IS_NOT_EQUAL IS_IDENTICAL IS_NOT_IDENTICAL SPACESHIP
+%nonassoc '<' IS_SMALLER_OR_EQUAL '>' IS_GREATER_OR_EQUAL
 %left  '.'
-%left  T_SL T_SR
+%left  SL SR
 %left  '+' '-'
 %left  '*' '/' '%'
 %right '!'
-%nonassoc T_INSTANCEOF
-%precedence T_UNARY
-%right T_POW
+%nonassoc INSTANCEOF
+%precedence UNARY
+%right POW
 
 
 %%
@@ -101,34 +101,34 @@ stmt_list : %empty
 
 stmt : ';'
      | expr ';'
-     | T_INLINE_HTML
+     | INLINE_HTML
      | block
-     | T_BREAK expr_e ';'
-     | T_CONTINUE expr_e ';'
-     | T_RETURN expr_e ';'
-     | T_ECHO expr_list ';'
-     | T_WHILE '(' expr ')' stmt
-     | T_WHILE '(' expr ')' ':' stmt_list T_ENDWHILE ';'
-     | T_DO stmt T_WHILE '(' expr ')' ';'
-     | T_FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' stmt
-     | T_FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' ':' stmt_list T_ENDFOR ';'
-     | T_FOREACH '(' expr T_AS foreach_variable ')' stmt
-     | T_FOREACH '(' expr T_AS foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
-     | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' stmt
-     | T_FOREACH '(' expr T_AS foreach_variable T_DOUBLE_ARROW foreach_variable ')' ':' stmt_list T_ENDFOREACH ';'
-     | T_IF '(' expr ')' stmt else_if_stmts
-     | T_IF '(' expr ')' stmt else_if_stmts T_ELSE stmt
-     | T_IF '(' expr ')' ':' stmt_list alt_else_if_stmts T_ENDIF ';'
-     | T_IF '(' expr ')' ':' stmt_list alt_else_if_stmts T_ELSE ':' stmt_list T_ENDIF ';'
-     | T_SWITCH '(' expr ')' '{' case_list '}'
-     | T_SWITCH '(' expr ')' '{' ';' case_list '}'
-     | T_SWITCH '(' expr ')' ':' case_list T_ENDSWITCH ';'
-     | T_SWITCH '(' expr ')' ':' ';' case_list T_ENDSWITCH ';'
-     | T_TRY block catch_list_e
-     | T_TRY block catch_list_e T_FINALLY block
-     | T_FUNCTION is_reference T_ID '(' parameter_list_e ')' return_type block
-     | modifiers_e T_CLASS T_ID class_heritage '{' class_member_list '}'
-     | T_INTERFACE T_ID class_heritage '{' class_member_list '}'
+     | BREAK expr_e ';'
+     | CONTINUE expr_e ';'
+     | RETURN expr_e ';'
+     | ECHO expr_list ';'
+     | WHILE '(' expr ')' stmt
+     | WHILE '(' expr ')' ':' stmt_list ENDWHILE ';'
+     | DO stmt WHILE '(' expr ')' ';'
+     | FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' stmt
+     | FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' ':' stmt_list ENDFOR ';'
+     | FOREACH '(' expr AS foreach_variable ')' stmt
+     | FOREACH '(' expr AS foreach_variable ')' ':' stmt_list ENDFOREACH ';'
+     | FOREACH '(' expr AS foreach_variable DOUBLE_ARROW foreach_variable ')' stmt
+     | FOREACH '(' expr AS foreach_variable DOUBLE_ARROW foreach_variable ')' ':' stmt_list ENDFOREACH ';'
+     | IF '(' expr ')' stmt else_if_stmts
+     | IF '(' expr ')' stmt else_if_stmts ELSE stmt
+     | IF '(' expr ')' ':' stmt_list alt_else_if_stmts ENDIF ';'
+     | IF '(' expr ')' ':' stmt_list alt_else_if_stmts ELSE ':' stmt_list ENDIF ';'
+     | SWITCH '(' expr ')' '{' case_list '}'
+     | SWITCH '(' expr ')' '{' ';' case_list '}'
+     | SWITCH '(' expr ')' ':' case_list ENDSWITCH ';'
+     | SWITCH '(' expr ')' ':' ';' case_list ENDSWITCH ';'
+     | TRY block catch_list_e
+     | TRY block catch_list_e FINALLY block
+     | FUNCTION is_reference ID '(' parameter_list_e ')' return_type block
+     | modifiers_e CLASS ID class_heritage '{' class_member_list '}'
+     | INTERFACE ID class_heritage '{' class_member_list '}'
      | error ';'
      ;
 
@@ -138,18 +138,18 @@ block : '{' stmt_list '}'
 /* $a, $$a, ${expr}, $a[0], $o->p, $o?->p, $o->m(), $f(1), Foo::$x, Foo::$$x, Foo::bar() */
 variable : simple_variable
          | dereferenceable '[' expr_e ']'
-         | dereferenceable T_OBJECT_OPERATOR T_ID
-         | dereferenceable T_OBJECT_OPERATOR simple_variable
-         | dereferenceable T_OBJECT_OPERATOR '{' expr '}'
-         | dereferenceable T_NULLSAFE_OBJECT_OPERATOR T_ID
-         | dereferenceable T_NULLSAFE_OBJECT_OPERATOR simple_variable
-         | dereferenceable T_NULLSAFE_OBJECT_OPERATOR '{' expr '}'
+         | dereferenceable OBJECT_OPERATOR ID
+         | dereferenceable OBJECT_OPERATOR simple_variable
+         | dereferenceable OBJECT_OPERATOR '{' expr '}'
+         | dereferenceable NULLSAFE_OBJECT_OPERATOR ID
+         | dereferenceable NULLSAFE_OBJECT_OPERATOR simple_variable
+         | dereferenceable NULLSAFE_OBJECT_OPERATOR '{' expr '}'
          | dereferenceable argument_list_e /* f(1), $o->m()->n[0]() */
-         | class_ref T_DOUBLE_COLON simple_variable
-         | class_ref T_DOUBLE_COLON T_ID argument_list_e
+         | class_ref DOUBLE_COLON simple_variable
+         | class_ref DOUBLE_COLON ID argument_list_e
          ;
 
-simple_variable : T_VARIABLE
+simple_variable : VARIABLE
                 | '$' simple_variable /* $$a, $$$a */
                 | '$' '{' expr '}'    /* ${'a'.'b'} */
                 ;
@@ -158,96 +158,96 @@ simple_variable : T_VARIABLE
 dereferenceable : variable
                 | '(' expr ')'              /* (new A)->b: скобки как основа цепочки */
                 | name argument_list_e      /* f(1) */
-                | T_NEW class_ref argument_list_e
+                | NEW class_ref argument_list_e
                 ;
 
 /* слева от :: и после new стоит имя класса, static, переменная ($cls) или (выражение);
    parent, self - обычные имена */
 class_ref : name
-          | T_STATIC
+          | STATIC
           | simple_variable              /* new $cls */
           | '(' expr ')'                 /* new (getClass())(1) */
           ;
 
-expr : T_LNUMBER
-     | T_DNUMBER
-     | T_CONSTANT_STRING
-     | T_MAGIC_CONST
-     | T_TRUE
-     | T_FALSE
-     | T_NULL
+expr : LNUMBER
+     | DNUMBER
+     | CONSTANT_STRING
+     | MAGIC_CONST
+     | TRUE
+     | FALSE
+     | NULLPTR
      | dereferenceable
      | name
      | '[' array_items_opt ']'
-     | T_ARRAY '(' array_items_opt ')'
-     | T_LIST  '(' array_items_opt ')'
+     | ARRAY '(' array_items_opt ')'
+     | LIST  '(' array_items_opt ')'
      | variable '='              expr       /* !$a = 5 == !($a = 5) */
-     | variable T_PLUS_EQUAL     expr
-     | variable T_MINUS_EQUAL    expr
-     | variable T_MUL_EQUAL      expr
-     | variable T_DIV_EQUAL      expr
-     | variable T_CONCAT_EQUAL   expr
-     | variable T_MOD_EQUAL      expr
-     | variable T_POW_EQUAL      expr
-     | variable T_AND_EQUAL      expr
-     | variable T_OR_EQUAL       expr
-     | variable T_XOR_EQUAL      expr
-     | variable T_SL_EQUAL       expr
-     | variable T_SR_EQUAL       expr
-     | variable T_COALESCE_EQUAL expr
-     | T_INC variable
-     | T_DEC variable
-     | variable T_INC
-     | variable T_DEC
-     | '-' expr %prec T_UNARY
-     | '+' expr %prec T_UNARY
-     | '~' expr %prec T_UNARY
-     | '@' expr %prec T_UNARY
+     | variable PLUS_EQUAL     expr
+     | variable MINUS_EQUAL    expr
+     | variable MUL_EQUAL      expr
+     | variable DIV_EQUAL      expr
+     | variable CONCAT_EQUAL   expr
+     | variable MOD_EQUAL      expr
+     | variable POW_EQUAL      expr
+     | variable AND_EQUAL      expr
+     | variable OR_EQUAL       expr
+     | variable XOR_EQUAL      expr
+     | variable SL_EQUAL       expr
+     | variable SR_EQUAL       expr
+     | variable COALESCE_EQUAL expr
+     | INC variable
+     | DEC variable
+     | variable INC
+     | variable DEC
+     | '-' expr %prec UNARY
+     | '+' expr %prec UNARY
+     | '~' expr %prec UNARY
+     | '@' expr %prec UNARY
      | '!' expr
-     | T_CLONE expr %prec T_UNARY
+     | CLONE expr %prec UNARY
      | expr '+' expr
      | expr '-' expr
      | expr '*' expr
      | expr '/' expr
      | expr '%' expr
-     | expr T_POW expr
+     | expr POW expr
      | expr '.' expr
-     | expr T_SL expr
-     | expr T_SR expr
+     | expr SL expr
+     | expr SR expr
      | expr '&' expr
      | expr '|' expr
      | expr '^' expr
      | expr '<' expr
      | expr '>' expr
-     | expr T_IS_SMALLER_OR_EQUAL expr
-     | expr T_IS_GREATER_OR_EQUAL expr
-     | expr T_IS_EQUAL expr
-     | expr T_IS_NOT_EQUAL expr
-     | expr T_IS_IDENTICAL expr
-     | expr T_IS_NOT_IDENTICAL expr
-     | expr T_SPACESHIP expr
-     | expr T_BOOLEAN_AND expr
-     | expr T_BOOLEAN_OR expr
-     | expr T_LOGICAL_AND expr
-     | expr T_LOGICAL_OR expr
-     | expr T_LOGICAL_XOR expr
+     | expr IS_SMALLER_OR_EQUAL expr
+     | expr IS_GREATER_OR_EQUAL expr
+     | expr IS_EQUAL expr
+     | expr IS_NOT_EQUAL expr
+     | expr IS_IDENTICAL expr
+     | expr IS_NOT_IDENTICAL expr
+     | expr SPACESHIP expr
+     | expr BOOLEAN_AND expr
+     | expr BOOLEAN_OR expr
+     | expr LOGICAL_AND expr
+     | expr LOGICAL_OR expr
+     | expr LOGICAL_XOR expr
      | expr '?' expr ':' expr                  /* a ? b : c */
-     | expr '?' ':' expr %prec T_SHORT_TERNARY /* a ?: b: нужен свой уровень, иначе конфликт с полным ?: */
-     | expr T_COALESCE expr
-     | T_MATCH '(' expr ')' '{' '}'
-     | T_MATCH '(' expr ')' '{' match_arm_list possible_comma '}'
-     | T_PRINT expr %prec T_LOGICAL_AND /* print 1 and 2 == (print 1) and 2 */
-     | T_THROW expr
-     | T_NEW class_ref
-     | expr T_INSTANCEOF class_ref
-     | class_ref T_DOUBLE_COLON T_ID
-     | class_ref T_DOUBLE_COLON T_CLASS
-     | T_FUNCTION is_reference '(' parameter_list_e ')' return_type block
-     | T_FUNCTION is_reference '(' parameter_list_e ')' T_USE '(' lexical_var_list possible_comma ')' return_type block
-     | T_STATIC T_FUNCTION is_reference '(' parameter_list_e ')' return_type block
-     | T_STATIC T_FUNCTION is_reference '(' parameter_list_e ')' T_USE '(' lexical_var_list possible_comma ')' return_type block
-     | T_FN is_reference '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN /* тело fn забирает всё до конца */
-     | T_STATIC T_FN is_reference '(' parameter_list_e ')' return_type T_DOUBLE_ARROW expr %prec T_FN
+     | expr '?' ':' expr %prec SHORT_TERNARY   /* a ?: b: нужен свой уровень, иначе конфликт с полным ?: */
+     | expr COALESCE expr
+     | MATCH '(' expr ')' '{' '}'
+     | MATCH '(' expr ')' '{' match_arm_list possible_comma '}'
+     | PRINT expr %prec LOGICAL_AND /* print 1 and 2 == (print 1) and 2 */
+     | THROW expr
+     | NEW class_ref
+     | expr INSTANCEOF class_ref
+     | class_ref DOUBLE_COLON ID
+     | class_ref DOUBLE_COLON CLASS
+     | FUNCTION is_reference '(' parameter_list_e ')' return_type block
+     | FUNCTION is_reference '(' parameter_list_e ')' USE '(' lexical_var_list possible_comma ')' return_type block
+     | STATIC FUNCTION is_reference '(' parameter_list_e ')' return_type block
+     | STATIC FUNCTION is_reference '(' parameter_list_e ')' USE '(' lexical_var_list possible_comma ')' return_type block
+     | FN is_reference '(' parameter_list_e ')' return_type DOUBLE_ARROW expr %prec FN /* тело fn забирает всё до конца */
+     | STATIC FN is_reference '(' parameter_list_e ')' return_type DOUBLE_ARROW expr %prec FN
      ;
 
 /* выражения через запятую: echo, заголовок for, условия ветки match */
@@ -267,34 +267,34 @@ array_items_opt : %empty
                 ;
 
 array_items : expr
-            | expr T_DOUBLE_ARROW expr
+            | expr DOUBLE_ARROW expr
             | array_items ',' expr
-            | array_items ',' expr T_DOUBLE_ARROW expr
+            | array_items ',' expr DOUBLE_ARROW expr
             ;
 
 /* цепочка elseif: elseif (...) stmt */
 else_if_stmts : %empty
-              | else_if_stmts T_ELSEIF '(' expr ')' stmt
+              | else_if_stmts ELSEIF '(' expr ')' stmt
               ;
 
 /* альтернативный синтаксис: elseif (...): stmt_list */
 alt_else_if_stmts : %empty
-                  | alt_else_if_stmts T_ELSEIF '(' expr ')' ':' stmt_list
+                  | alt_else_if_stmts ELSEIF '(' expr ')' ':' stmt_list
                   ;
 
 /* ветки switch */
 case_list : %empty
-          | case_list T_CASE expr ':' stmt_list
-          | case_list T_CASE expr ';' stmt_list
-          | case_list T_DEFAULT ':' stmt_list
-          | case_list T_DEFAULT ';' stmt_list
+          | case_list CASE expr ':' stmt_list
+          | case_list CASE expr ';' stmt_list
+          | case_list DEFAULT ':' stmt_list
+          | case_list DEFAULT ';' stmt_list
           ;
 
 /* хотя бы одна ветка match */
-match_arm_list : expr_list possible_comma T_DOUBLE_ARROW expr
-               | T_DEFAULT possible_comma T_DOUBLE_ARROW expr
-               | match_arm_list ',' expr_list possible_comma T_DOUBLE_ARROW expr
-               | match_arm_list ',' T_DEFAULT possible_comma T_DOUBLE_ARROW expr
+match_arm_list : expr_list possible_comma DOUBLE_ARROW expr
+               | DEFAULT possible_comma DOUBLE_ARROW expr
+               | match_arm_list ',' expr_list possible_comma DOUBLE_ARROW expr
+               | match_arm_list ',' DEFAULT possible_comma DOUBLE_ARROW expr
                ;
 
 for_exprs : %empty
@@ -305,8 +305,8 @@ for_exprs : %empty
 foreach_variable : variable
                  | '&' variable
                  |  '[' array_items_opt ']'
-                 | T_ARRAY '(' array_items_opt ')'
-                 | T_LIST  '(' array_items_opt ')'
+                 | ARRAY '(' array_items_opt ')'
+                 | LIST  '(' array_items_opt ')'
                  ;
 
 /* список параметров: [модификаторы] [тип] [&] [...]$имя [= значение] */
@@ -320,9 +320,9 @@ parameter_list : parameter
 
 /* [модификаторы] [тип] [&] $имя = значение по умолчанию
    [модификаторы] [тип] [&] ...$имя */
-parameter : modifiers_e type_e is_reference T_VARIABLE
-          | modifiers_e type_e is_reference T_VARIABLE '=' expr
-          | modifiers_e type_e is_reference T_ELLIPSIS T_VARIABLE
+parameter : modifiers_e type_e is_reference VARIABLE
+          | modifiers_e type_e is_reference VARIABLE '=' expr
+          | modifiers_e type_e is_reference ELLIPSIS VARIABLE
           ;
 
 /* необязательный &: параметр по ссылке, function &f(), use (&$x) */
@@ -338,7 +338,7 @@ type_e : %empty
 /* необязательный тип возврата */
 return_type : %empty
             | ':' type
-            | ':' T_STATIC /* static как возвращаемый тип: function create(): static */
+            | ':' STATIC /* static как возвращаемый тип: function create(): static */
             ;
 
 /* тип: int, ?int, int|string|null */
@@ -348,33 +348,33 @@ type : type_name
      ;
 
 /* одно имя типа; null, false, true - отдельные ключевые слова: int|false, string|null */
-type_name : T_ARRAY
-          | T_CALLABLE
-          | T_NULL
-          | T_FALSE
-          | T_TRUE
+type_name : ARRAY
+          | CALLABLE
+          | NULLPTR
+          | FALSE
+          | TRUE
           | name
           ;
 
 /* аргументы в скобках */
 argument_list_e : '(' ')'
                 | '(' argument_list possible_comma ')'
-                | '(' T_ELLIPSIS ')' /* не пустой аргумент, а callable: $g = strlen(...); */
+                | '(' ELLIPSIS ')' /* не пустой аргумент, а callable: $g = strlen(...); */
                 ;
 
 /* хотя бы один аргумент */
 argument_list : expr
-              | T_ID ':' expr
-              | T_ELLIPSIS expr
+              | ID ':' expr
+              | ELLIPSIS expr
               | argument_list ',' expr
-              | argument_list ',' T_ID ':' expr
-              | argument_list ',' T_ELLIPSIS expr
+              | argument_list ',' ID ':' expr
+              | argument_list ',' ELLIPSIS expr
               ;
 
 /* catch (A | B $e), catch (A) - переменная необязательна */
 catch_list_e : %empty
-             | catch_list_e T_CATCH '(' catch_types ')' block            /* catch (A) {}: переменная необязательна */
-             | catch_list_e T_CATCH '(' catch_types T_VARIABLE ')' block /* catch ($e) без типа — ошибка */
+             | catch_list_e CATCH '(' catch_types ')' block            /* catch (A) {}: переменная необязательна */
+             | catch_list_e CATCH '(' catch_types VARIABLE ')' block /* catch ($e) без типа — ошибка */
              ;
 
 /* типы исключений в catch */
@@ -384,8 +384,8 @@ catch_types : name
 
 /* extends и implements */
 class_heritage : %empty
-               | class_heritage T_EXTENDS name_list
-               | class_heritage T_IMPLEMENTS name_list
+               | class_heritage EXTENDS name_list
+               | class_heritage IMPLEMENTS name_list
                ;
 
 /* имена через запятую */
@@ -396,17 +396,17 @@ name_list : name
 /* члены класса и интерфейса */
 class_member_list : %empty
                   | class_member_list member_modifiers type_e property_list ';' /* свойство требует модификатор */
-                  | class_member_list T_VAR type_e property_list ';'
-                  | class_member_list modifiers_e T_CONST const_list ';'
-                  | class_member_list modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type block
-                  | class_member_list modifiers_e T_FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';' /* abstract / интерфейс */
+                  | class_member_list VAR type_e property_list ';'
+                  | class_member_list modifiers_e CONST const_list ';'
+                  | class_member_list modifiers_e FUNCTION is_reference identifier '(' parameter_list_e ')' return_type block
+                  | class_member_list modifiers_e FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';' /* abstract / интерфейс */
                   ;
 
 /* свойства через запятую */
-property_list : T_VARIABLE
-              | T_VARIABLE '=' expr
-              | property_list ',' T_VARIABLE
-              | property_list ',' T_VARIABLE '=' expr
+property_list : VARIABLE
+              | VARIABLE '=' expr
+              | property_list ',' VARIABLE
+              | property_list ',' VARIABLE '=' expr
               ;
 
 /* константы через запятую */
@@ -415,18 +415,18 @@ const_list : identifier '=' expr
            ;
 
 /* имя метода или константы класса: обычное слово или служебное (function private(), const list = 1) */
-identifier : T_ID
-           | T_ECHO | T_ARRAY | T_TRUE | T_FALSE | T_NULL
-           | T_ABSTRACT | T_AS | T_BREAK | T_CALLABLE | T_CASE | T_CATCH | T_CLASS | T_CLONE
-           | T_CONST | T_CONTINUE | T_DECLARE | T_DEFAULT | T_DO | T_ELSE | T_ELSEIF | T_EMPTY
-           | T_ENDDECLARE | T_ENDFOR | T_ENDFOREACH | T_ENDIF | T_ENDSWITCH | T_ENDWHILE
-           | T_ENUM | T_EVAL | T_EXIT | T_EXTENDS | T_FINAL | T_FINALLY | T_FN | T_FOR | T_FOREACH
-           | T_FUNCTION | T_GLOBAL | T_GOTO | T_IF | T_IMPLEMENTS | T_INCLUDE | T_INCLUDE_ONCE
-           | T_INSTANCEOF | T_INSTEADOF | T_INTERFACE | T_ISSET | T_LIST | T_MATCH | T_NAMESPACE
-           | T_NEW | T_PRINT | T_PRIVATE | T_PROTECTED | T_PUBLIC | T_READONLY | T_REQUIRE
-           | T_REQUIRE_ONCE | T_RETURN | T_STATIC | T_SWITCH | T_THROW | T_TRAIT | T_TRY
-           | T_UNSET | T_USE | T_VAR | T_WHILE | T_YIELD | T_YIELD_FROM
-           | T_LOGICAL_AND | T_LOGICAL_OR | T_LOGICAL_XOR
+identifier : ID
+           | ECHO | ARRAY | TRUE | FALSE | NULLPTR
+           | ABSTRACT | AS | BREAK | CALLABLE | CASE | CATCH | CLASS | CLONE
+           | CONST | CONTINUE | DECLARE | DEFAULT | DO | ELSE | ELSEIF | EMPTY
+           | ENDDECLARE | ENDFOR | ENDFOREACH | ENDIF | ENDSWITCH | ENDWHILE
+           | ENUM | EVAL | EXIT | EXTENDS | FINAL | FINALLY | FN | FOR | FOREACH
+           | FUNCTION | GLOBAL | GOTO | IF | IMPLEMENTS | INCLUDE | INCLUDE_ONCE
+           | INSTANCEOF | INSTEADOF | INTERFACE | ISSET | LIST | MATCH | NAMESPACE
+           | NEW | PRINT | PRIVATE | PROTECTED | PUBLIC | READONLY | REQUIRE
+           | REQUIRE_ONCE | RETURN | STATIC | SWITCH | THROW | TRAIT | TRY
+           | UNSET | USE | VAR | WHILE | YIELD | YIELD_FROM
+           | LOGICAL_AND | LOGICAL_OR | LOGICAL_XOR
            ;
 
 modifiers_e : %empty
@@ -437,18 +437,18 @@ member_modifiers : member_modifier
                  | member_modifiers member_modifier
                  ;
 
-member_modifier : T_PUBLIC
-                | T_PROTECTED
-                | T_PRIVATE
-                | T_STATIC
-                | T_ABSTRACT
-                | T_FINAL
-                | T_READONLY
+member_modifier : PUBLIC
+                | PROTECTED
+                | PRIVATE
+                | STATIC
+                | ABSTRACT
+                | FINAL
+                | READONLY
                 ;
 
 /* захваченные переменные use ($a, &$b) */
-lexical_var_list : is_reference T_VARIABLE
-                 | lexical_var_list ',' is_reference T_VARIABLE
+lexical_var_list : is_reference VARIABLE
+                 | lexical_var_list ',' is_reference VARIABLE
                  ;
 
 /* необязательная запятая в конце списка */
@@ -457,17 +457,17 @@ possible_comma : %empty
                ;
 
 /* имя функции или константы: foo, Foo\bar, \foo, namespace\foo */
-name : T_ID
-     | T_NAME_QUALIFIED
-     | T_NAME_FULLY_QUALIFIED
-     | T_NAME_RELATIVE
+name : ID
+     | NAME_QUALIFIED
+     | NAME_FULLY_QUALIFIED
+     | NAME_RELATIVE
      ;
 
 %%
 
 
 void yyerror(const char* msg) {
-    if (lastToken == T_ERROR) return;   /* лексер уже сообщил об этой ошибке */
+    if (lastToken == ERROR) return;   /* лексер уже сообщил об этой ошибке */
     parserErrors++;
     fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
 }
