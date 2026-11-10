@@ -128,8 +128,8 @@ stmt : ';'
      | TRY block catch_list_e
      | TRY block catch_list_e FINALLY block
      | FUNCTION is_reference ID '(' parameter_list_e ')' return_type block
-     | modifiers_e CLASS ID class_heritage '{' class_member_list '}'
-     | INTERFACE ID class_heritage '{' class_member_list '}'
+     | modifiers_e CLASS ID '{' class_member_list '}'
+     | modifiers_e CLASS ID EXTENDS name_list '{' class_member_list '}'
      | error ';'
      ;
 
@@ -376,12 +376,6 @@ catch_list_e : %empty
 catch_types : name
             | catch_types '|' name
             ;
-
-/* extends и implements */
-class_heritage : %empty
-               | class_heritage EXTENDS name_list
-               | class_heritage IMPLEMENTS name_list
-               ;
 
 /* имена через запятую */
 name_list : name
