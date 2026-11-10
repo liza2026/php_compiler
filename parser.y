@@ -43,6 +43,7 @@ void yyerror(const char* msg);
 %token INTERFACE ISSET LIST MATCH NAMESPACE NEW PRINT
 %token PRIVATE PROTECTED PUBLIC READONLY REQUIRE REQUIRE_ONCE RETURN
 %token STATIC SWITCH THROW TRAIT TRY UNSET USE VAR WHILE YIELD YIELD_FROM
+%token PARENT SELF
 
 /* Приведения типов, обращение к члену класса, атрибуты */
 %token INT_CAST DOUBLE_CAST STRING_CAST ARRAY_CAST OBJECT_CAST BOOL_CAST
@@ -161,12 +162,13 @@ dereferenceable : variable
                 | NEW class_ref argument_list_e
                 ;
 
-/* слева от :: и после new стоит имя класса, static, переменная ($cls) или (выражение);
-   parent, self - обычные имена */
+/* слева от :: и после new стоит имя класса, static, parent, self, переменная ($cls) или (выражение);  */
 class_ref : name
           | STATIC
-          | simple_variable              /* new $cls */
-          | '(' expr ')'                 /* new (getClass())(1) */
+          | SELF
+          | PARENT
+          | simple_variable
+          | '(' expr ')'
           ;
 
 expr : LNUMBER
@@ -353,6 +355,8 @@ type_name : ARRAY
           | NULLPTR
           | FALSE
           | TRUE
+          | SELF
+          | PARENT
           | name
           ;
 

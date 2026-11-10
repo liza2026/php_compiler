@@ -230,6 +230,8 @@ require_once    { Console::Log("Keyword: require_once"); return REQUIRE_ONCE; }
 return          { Console::Log("Keyword: return"); return RETURN; }
 static          { Console::Log("Keyword: static"); return STATIC; }
 switch          { Console::Log("Keyword: switch"); return SWITCH; }
+parent          { Console::Log("Keyword: parent"); return PARENT; }
+self            { Console::Log("Keyword: self"); return SELF; }
 throw           { Console::Log("Keyword: throw"); return THROW; }
 trait           { Console::Log("Keyword: trait"); return TRAIT; }
 try             { Console::Log("Keyword: try"); return TRY; }
