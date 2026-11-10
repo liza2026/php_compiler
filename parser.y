@@ -236,8 +236,6 @@ expr : LNUMBER
      | expr '?' expr ':' expr                  /* a ? b : c */
      | expr '?' ':' expr %prec SHORT_TERNARY   /* a ?: b: нужен свой уровень, иначе конфликт с полным ?: */
      | expr COALESCE expr
-     | MATCH '(' expr ')' '{' '}'
-     | MATCH '(' expr ')' '{' match_arm_list possible_comma '}'
      | PRINT expr %prec LOGICAL_AND /* print 1 and 2 == (print 1) and 2 */
      | THROW expr
      | NEW class_ref
@@ -291,13 +289,6 @@ case_list : %empty
           | case_list DEFAULT ':' stmt_list
           | case_list DEFAULT ';' stmt_list
           ;
-
-/* хотя бы одна ветка match */
-match_arm_list : expr_list possible_comma DOUBLE_ARROW expr
-               | DEFAULT possible_comma DOUBLE_ARROW expr
-               | match_arm_list ',' expr_list possible_comma DOUBLE_ARROW expr
-               | match_arm_list ',' DEFAULT possible_comma DOUBLE_ARROW expr
-               ;
 
 for_exprs : %empty
           | expr_list
