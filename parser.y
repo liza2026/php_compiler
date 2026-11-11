@@ -294,13 +294,22 @@ for_exprs : %empty
           | expr_list
           ;
 
-/* $v, &$v (по ссылке), [$a, $b] и list($a, $b) (разбор элемента на части) */
-foreach_variable : variable
-                 | '&' variable
-                 |  '[' array_items_opt ']'
-                 | ARRAY '(' array_items_opt ')'
-                 | LIST  '(' array_items_opt ')'
+/* $v, &$v, [$a, $b], [&$a, $b], list($a, $b) */
+foreach_variable : is_reference variable
+                 | '[' foreach_array_items ']'
+                 | ARRAY '(' foreach_array_items ')'
+                 | LIST '(' foreach_array_items ')'
                  ;
+
+/* Элементы списка переменных foreach */
+foreach_array_items : foreach_array_item
+                    | foreach_array_items ',' foreach_array_item
+                    ;
+
+/* Один элемент: переменная, вложенный список или пропуск */
+foreach_array_item : foreach_variable
+                   | %empty
+                   ;
 
 /* список параметров: [модификаторы] [тип] [&] [...]$имя [= значение] */
 parameter_list_e : %empty
