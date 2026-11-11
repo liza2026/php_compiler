@@ -4,7 +4,7 @@
 %option never-interactive
     /* автоматическое отслеживание номера строки */
 %option yylineno
-    /* ключевые слова, приведения типов и 0X/E в числах - без учёта регистра */
+    /* ключевые слова и 0X/E в числах - без учёта регистра */
 %option case-insensitive
     /* стек состояний: строки и вставки {$ ... } вкладываются друг в друга */
 %option stack
@@ -96,9 +96,7 @@ INT_OCT_OLD  0(_?[0-7])+
 FLOAT        ({DIGITS}\.{DIGITS}?|\.{DIGITS}){EXPONENT}?|{DIGITS}{EXPONENT}
 NUMBER_ANY   {FLOAT}|{INT_HEX}|{INT_BIN}|{INT_OCT_NEW}|{INT_OCT_OLD}|{INTEGER}
 
-NAME_QUALIFIED         {LABEL}(\\{LABEL})+
-NAME_FULLY_QUALIFIED   \\{LABEL}(\\{LABEL})*
-NAME_RELATIVE          namespace(\\{LABEL})+
+
 
     /* текст в "...": любой символ, кроме " \ $ {, и экранированная пара */
 STRING_TEXT (\\(.|\n)|[^"\\${])+
@@ -196,7 +194,6 @@ endforeach      { Console::Log("Keyword: endforeach"); return ENDFOREACH; }
 endif           { Console::Log("Keyword: endif"); return ENDIF; }
 endswitch       { Console::Log("Keyword: endswitch"); return ENDSWITCH; }
 endwhile        { Console::Log("Keyword: endwhile"); return ENDWHILE; }
-enum            { Console::Log("Keyword: enum"); return ENUM; }
 eval            { Console::Log("Keyword: eval"); return EVAL; }
 exit|die        { Console::Log("Keyword: exit"); return EXIT; }
 extends         { Console::Log("Keyword: extends"); return EXTENDS; }
@@ -218,7 +215,6 @@ interface       { Console::Log("Keyword: interface"); return INTERFACE; }
 isset           { Console::Log("Keyword: isset"); return ISSET; }
 list            { Console::Log("Keyword: list"); return LIST; }
 match           { Console::Log("Keyword: match"); return MATCH; }
-namespace       { Console::Log("Keyword: namespace"); return NAMESPACE; }
 new             { Console::Log("Keyword: new"); return NEW; }
 print           { Console::Log("Keyword: print"); return PRINT; }
 private         { Console::Log("Keyword: private"); return PRIVATE; }
@@ -251,19 +247,12 @@ xor             { Console::Log("Operator: xor"); return LOGICAL_XOR; }
 true            { Console::Log("Boolean: true"); return TRUE; }
 false           { Console::Log("Boolean: false"); return FALSE; }
 null            { Console::Log("Null: null"); return NULLPTR; }
-__(line|file|dir|function|class|method|namespace|trait)__ {
+__(line|file|dir|function|class|method|trait)__ {
     Console::Log("MagicConstant: " + string(yytext));
     yylval.str = new std::string(yytext);
     return MAGIC_CONST;
 }
 
-    /* Приведения типов: (int) (string) ... */
-"("[ \t]*(int|integer)[ \t]*")"     { Console::Log("Cast: (int)"); return INT_CAST; }
-"("[ \t]*(float|double)[ \t]*")"    { Console::Log("Cast: (float)"); return DOUBLE_CAST; }
-"("[ \t]*(string|binary)[ \t]*")"   { Console::Log("Cast: (string)"); return STRING_CAST; }
-"("[ \t]*array[ \t]*")"             { Console::Log("Cast: (array)"); return ARRAY_CAST; }
-"("[ \t]*object[ \t]*")"            { Console::Log("Cast: (object)"); return OBJECT_CAST; }
-"("[ \t]*(bool|boolean)[ \t]*")"    { Console::Log("Cast: (bool)"); return BOOL_CAST; }
 
 
     /* Операторы */
@@ -303,7 +292,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     Console::Log("Operator: " + string(yytext));
     return yytext[0];
 }
-[()\[\],;:\\] {
+[()\[\],;:] {
     Console::Log("Separator: " + string(yytext));
     return yytext[0];
 }
@@ -319,10 +308,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     Console::Log("Separator: }");
     return '}';
 }
-"#[" {
-    Console::Log("AttributeOpen: #[");
-    return ATTRIBUTE;
-}
+
 
 
     /* Обращение к члену класса: после -> ?-> :: идёт имя, даже ключевое слово */
@@ -365,21 +351,7 @@ __(line|file|dir|function|class|method|namespace|trait)__ {
     yylval.str = new std::string(yytext);
     return ID;
 }
-{NAME_RELATIVE} {
-    Console::Log("Identifier (relative): " + string(yytext));
-    yylval.str = new std::string(yytext);
-    return NAME_RELATIVE;
-}
-{NAME_QUALIFIED} {
-    Console::Log("Identifier (qualified): " + string(yytext));
-    yylval.str = new std::string(yytext);
-    return NAME_QUALIFIED;
-}
-{NAME_FULLY_QUALIFIED} {
-    Console::Log("Identifier (fully qualified): " + string(yytext));
-    yylval.str = new std::string(yytext);
-    return NAME_FULLY_QUALIFIED;
-}
+
 {VARIABLE} {
     Console::Log("Variable: " + string(yytext));
     yylval.str = new std::string(yytext + 1);
