@@ -28,7 +28,7 @@ void yyerror(const char* msg);
 
 /* Токены */
 %token <str>  VARIABLE INLINE_HTML CONSTANT_STRING
-%token <str>  ID NAME_QUALIFIED NAME_FULLY_QUALIFIED NAME_RELATIVE MAGIC_CONST
+%token <str>  ID MAGIC_CONST
 %token <ival> LNUMBER
 %token <dval> DNUMBER
 %token ERROR
@@ -38,16 +38,15 @@ void yyerror(const char* msg);
 %token ABSTRACT AS BREAK CALLABLE CASE CATCH CLASS CLONE CONST CONTINUE
 %token DECLARE DEFAULT DO ELSE ELSEIF EMPTY
 %token ENDDECLARE ENDFOR ENDFOREACH ENDIF ENDSWITCH ENDWHILE
-%token ENUM EVAL EXIT EXTENDS FINAL FINALLY FN FOR FOREACH FUNCTION
+%token EVAL EXIT EXTENDS FINAL FINALLY FN FOR FOREACH FUNCTION
 %token GLOBAL GOTO IF IMPLEMENTS INCLUDE INCLUDE_ONCE INSTANCEOF INSTEADOF
-%token INTERFACE ISSET LIST MATCH NAMESPACE NEW PRINT
+%token INTERFACE ISSET LIST MATCH NEW PRINT
 %token PRIVATE PROTECTED PUBLIC READONLY REQUIRE REQUIRE_ONCE RETURN
 %token STATIC SWITCH THROW TRAIT TRY UNSET USE VAR WHILE YIELD YIELD_FROM
 %token PARENT SELF
 
-/* Приведения типов, обращение к члену класса, атрибуты */
-%token INT_CAST DOUBLE_CAST STRING_CAST ARRAY_CAST OBJECT_CAST BOOL_CAST
-%token OBJECT_OPERATOR NULLSAFE_OBJECT_OPERATOR DOUBLE_COLON ATTRIBUTE
+/* Обращение к члену класса */
+%token OBJECT_OPERATOR NULLSAFE_OBJECT_OPERATOR DOUBLE_COLON
 
 /* Операторы из нескольких символов */
 %token ELLIPSIS DOUBLE_ARROW
@@ -87,14 +86,28 @@ void yyerror(const char* msg);
 %nonassoc INSTANCEOF
 %precedence UNARY
 %right POW
+%nonassoc INC DEC
+%left  '[' '(' OBJECT_OPERATOR NULLSAFE_OBJECT_OPERATOR DOUBLE_COLON /* ->, ::, [ ], ( ) - самые тесные операции */
+%precedence NEW
 
 
 %%
 
 /* Программа и операторы */
 
-program : stmt_list
+program : %empty
+        | program top_stmt
         ;
+
+/* Верхний уровень - единственное место, где можно объявлять функции и классы.
+   Внутри блоков и тел if/while/for/... разрешён только stmt: вложенные объявления
+   (if (...) function f() {}, { class A {} }) в этом языке не поддерживаются. */
+top_stmt : stmt
+         | FUNCTION is_reference ID '(' parameter_list_e ')' return_type block
+         | modifiers_e CLASS ID '{' class_member_list '}'
+         | modifiers_e CLASS ID EXTENDS ID '{' class_member_list '}'
+         ;
+
 
 stmt_list : %empty
           | stmt_list stmt
@@ -131,49 +144,17 @@ stmt : ';'
      | SWITCH '(' expr ')' ':' ';' case_list ENDSWITCH ';'
      | TRY block catch_list_e
      | TRY block catch_list_e FINALLY block
-     | FUNCTION is_reference ID '(' parameter_list_e ')' return_type block
-     | modifiers_e CLASS ID '{' class_member_list '}'
-     | modifiers_e CLASS ID EXTENDS name_list '{' class_member_list '}'
      | error ';'
      ;
 
 block : '{' stmt_list '}'
       ;
 
-/* $a, $$a, ${expr}, $a[0], $o->p, $o?->p, $o->m(), $f(1), Foo::$x, Foo::$$x, Foo::bar() */
-variable : simple_variable
-         | dereferenceable '[' expr_e ']'
-         | dereferenceable OBJECT_OPERATOR ID
-         | dereferenceable OBJECT_OPERATOR simple_variable
-         | dereferenceable OBJECT_OPERATOR '{' expr '}'
-         | dereferenceable NULLSAFE_OBJECT_OPERATOR ID
-         | dereferenceable NULLSAFE_OBJECT_OPERATOR simple_variable
-         | dereferenceable NULLSAFE_OBJECT_OPERATOR '{' expr '}'
-         | dereferenceable argument_list_e /* f(1), $o->m()->n[0]() */
-         | class_ref DOUBLE_COLON simple_variable
-         | class_ref DOUBLE_COLON ID argument_list_e
+/* $a, $$a, $$$a, ${'a'.'b'}: всё остальное (индексы, ->, ::, вызовы) - операции над expr */
+variable : VARIABLE
+         | '$' variable
+         | '$' '{' expr '}'
          ;
-
-simple_variable : VARIABLE
-                | '$' simple_variable /* $$a, $$$a */
-                | '$' '{' expr '}'    /* ${'a'.'b'} */
-                ;
-
-/* то, к чему можно применить [ ], -> и ( ): переменная, (выражение), foo(), new Foo() */
-dereferenceable : variable
-                | '(' expr ')'              /* (new A)->b: скобки как основа цепочки */
-                | name argument_list_e      /* f(1) */
-                | NEW class_ref argument_list_e
-                ;
-
-/* слева от :: и после new стоит имя класса, static, parent, self, переменная ($cls) или (выражение);  */
-class_ref : name
-          | STATIC
-          | SELF
-          | PARENT
-          | simple_variable
-          | '(' expr ')'
-          ;
 
 expr : LNUMBER
      | DNUMBER
@@ -182,28 +163,45 @@ expr : LNUMBER
      | TRUE
      | FALSE
      | NULLPTR
-     | dereferenceable
-     | name
+     | ID
+     | SELF
+     | PARENT
+     | STATIC
+     | variable
+     | '(' expr ')'
      | '[' array_items_opt ']'
      | ARRAY '(' array_items_opt ')'
-     | variable '='              expr       /* !$a = 5 == !($a = 5) */
-     | variable PLUS_EQUAL     expr
-     | variable MINUS_EQUAL    expr
-     | variable MUL_EQUAL      expr
-     | variable DIV_EQUAL      expr
-     | variable CONCAT_EQUAL   expr
-     | variable MOD_EQUAL      expr
-     | variable POW_EQUAL      expr
-     | variable AND_EQUAL      expr
-     | variable OR_EQUAL       expr
-     | variable XOR_EQUAL      expr
-     | variable SL_EQUAL       expr
-     | variable SR_EQUAL       expr
-     | variable COALESCE_EQUAL expr
-     | INC variable
-     | DEC variable
-     | variable INC
-     | variable DEC
+     | expr '[' expr_e ']'
+     | expr OBJECT_OPERATOR ID
+     | expr OBJECT_OPERATOR variable
+     | expr OBJECT_OPERATOR '{' expr '}'
+     | expr NULLSAFE_OBJECT_OPERATOR ID
+     | expr NULLSAFE_OBJECT_OPERATOR variable
+     | expr NULLSAFE_OBJECT_OPERATOR '{' expr '}'
+     | expr DOUBLE_COLON ID
+     | expr DOUBLE_COLON variable
+     | expr '(' ')'
+     | expr '(' argument_list possible_comma ')'
+     | expr '(' ELLIPSIS ')' /* не пустой аргумент, а callable: $g = strlen(...); */
+     | '&' expr %prec UNARY /* ссылка: = &$a, foreach (... as &$v), [&$a, $b] */
+     | expr '='              expr
+     | expr PLUS_EQUAL     expr
+     | expr MINUS_EQUAL    expr
+     | expr MUL_EQUAL      expr
+     | expr DIV_EQUAL      expr
+     | expr CONCAT_EQUAL   expr
+     | expr MOD_EQUAL      expr
+     | expr POW_EQUAL      expr
+     | expr AND_EQUAL      expr
+     | expr OR_EQUAL       expr
+     | expr XOR_EQUAL      expr
+     | expr SL_EQUAL       expr
+     | expr SR_EQUAL       expr
+     | expr COALESCE_EQUAL expr
+     | INC expr
+     | DEC expr
+     | expr INC
+     | expr DEC
      | '-' expr %prec UNARY
      | '+' expr %prec UNARY
      | '~' expr %prec UNARY
@@ -241,10 +239,8 @@ expr : LNUMBER
      | expr COALESCE expr
      | PRINT expr %prec LOGICAL_AND /* print 1 and 2 == (print 1) and 2 */
      | THROW expr
-     | NEW class_ref
-     | expr INSTANCEOF class_ref
-     | class_ref DOUBLE_COLON ID
-     | class_ref DOUBLE_COLON CLASS
+     | NEW expr
+     | expr INSTANCEOF expr
      | FUNCTION is_reference '(' parameter_list_e ')' return_type block
      | FUNCTION is_reference '(' parameter_list_e ')' USE '(' lexical_var_list possible_comma ')' return_type block
      | STATIC FUNCTION is_reference '(' parameter_list_e ')' return_type block
@@ -300,7 +296,7 @@ for_exprs : %empty
 /* $v, &$v, [$a, $b], [&$a, $b] */
 /* Элементы списка переменных foreach */
 foreach_array_items : %empty
-		    | is_reference variable
+		            | is_reference variable
                     | foreach_array_items ',' is_reference variable
                     | foreach_array_items ','
                     ;
@@ -351,14 +347,9 @@ type_name : ARRAY
           | TRUE
           | SELF
           | PARENT
-          | name
+          | ID
           ;
 
-/* аргументы в скобках */
-argument_list_e : '(' ')'
-                | '(' argument_list possible_comma ')'
-                | '(' ELLIPSIS ')' /* не пустой аргумент, а callable: $g = strlen(...); */
-                ;
 
 /* хотя бы один аргумент */
 argument_list : expr
@@ -376,14 +367,10 @@ catch_list_e : %empty
              ;
 
 /* типы исключений в catch */
-catch_types : name
-            | catch_types '|' name
+catch_types : ID
+            | catch_types '|' ID
             ;
 
-/* имена через запятую */
-name_list : name
-          | name_list ',' name
-          ;
 
 /* члены класса и интерфейса */
 class_member_list : %empty
@@ -412,9 +399,9 @@ identifier : ID
            | ABSTRACT | AS | BREAK | CALLABLE | CASE | CATCH | CLASS | CLONE
            | CONST | CONTINUE | DECLARE | DEFAULT | DO | ELSE | ELSEIF | EMPTY
            | ENDDECLARE | ENDFOR | ENDFOREACH | ENDIF | ENDSWITCH | ENDWHILE
-           | ENUM | EVAL | EXIT | EXTENDS | FINAL | FINALLY | FN | FOR | FOREACH
+           | EVAL | EXIT | EXTENDS | FINAL | FINALLY | FN | FOR | FOREACH
            | FUNCTION | GLOBAL | GOTO | IF | IMPLEMENTS | INCLUDE | INCLUDE_ONCE
-           | INSTANCEOF | INSTEADOF | INTERFACE | ISSET | LIST | MATCH | NAMESPACE
+           | INSTANCEOF | INSTEADOF | INTERFACE | ISSET | LIST | MATCH
            | NEW | PRINT | PRIVATE | PROTECTED | PUBLIC | READONLY | REQUIRE
            | REQUIRE_ONCE | RETURN | STATIC | SWITCH | THROW | TRAIT | TRY
            | UNSET | USE | VAR | WHILE | YIELD | YIELD_FROM
@@ -448,12 +435,6 @@ possible_comma : %empty
                | ','
                ;
 
-/* имя функции или константы: foo, Foo\bar, \foo, namespace\foo */
-name : ID
-     | NAME_QUALIFIED
-     | NAME_FULLY_QUALIFIED
-     | NAME_RELATIVE
-     ;
 
 %%
 
