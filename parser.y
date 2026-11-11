@@ -113,10 +113,14 @@ stmt : ';'
      | DO stmt WHILE '(' expr ')' ';'
      | FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' stmt
      | FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' ':' stmt_list ENDFOR ';'
-     | FOREACH '(' expr AS foreach_variable ')' stmt
-     | FOREACH '(' expr AS foreach_variable ')' ':' stmt_list ENDFOREACH ';'
-     | FOREACH '(' expr AS foreach_variable DOUBLE_ARROW foreach_variable ')' stmt
-     | FOREACH '(' expr AS foreach_variable DOUBLE_ARROW foreach_variable ')' ':' stmt_list ENDFOREACH ';'
+     | FOREACH '(' expr AS variable ')' stmt
+     | FOREACH '(' expr AS '&' variable ')' stmt
+     | FOREACH '(' expr AS '[' foreach_array_items ']' ')' stmt
+     | FOREACH '(' expr AS variable DOUBLE_ARROW is_reference variable ')' stmt
+     | FOREACH '(' expr AS variable ')' ':' stmt_list ENDFOREACH ';'
+     | FOREACH '(' expr AS '&' variable ')' ':' stmt_list ENDFOREACH ';'
+     | FOREACH '(' expr AS '[' foreach_array_items ']' ')' ':' stmt_list ENDFOREACH ';'
+     | FOREACH '(' expr AS variable DOUBLE_ARROW is_reference variable ')' ':' stmt_list ENDFOREACH ';'
      | IF '(' expr ')' stmt else_if_stmts
      | IF '(' expr ')' stmt else_if_stmts ELSE stmt
      | IF '(' expr ')' ':' stmt_list alt_else_if_stmts ENDIF ';'
@@ -182,7 +186,6 @@ expr : LNUMBER
      | name
      | '[' array_items_opt ']'
      | ARRAY '(' array_items_opt ')'
-     | LIST  '(' array_items_opt ')'
      | variable '='              expr       /* !$a = 5 == !($a = 5) */
      | variable PLUS_EQUAL     expr
      | variable MINUS_EQUAL    expr
@@ -294,21 +297,13 @@ for_exprs : %empty
           | expr_list
           ;
 
-/* $v, &$v, [$a, $b], [&$a, $b], list($a, $b) */
-foreach_variable : is_reference variable
-                 | '[' foreach_array_items ']'
-                 | LIST '(' foreach_array_items ')'
-                 ;
-
+/* $v, &$v, [$a, $b], [&$a, $b] */
 /* Элементы списка переменных foreach */
-foreach_array_items : foreach_array_item
-                    | foreach_array_items ',' foreach_array_item
+foreach_array_items : %empty
+		    | is_reference variable
+                    | foreach_array_items ',' is_reference variable
+                    | foreach_array_items ','
                     ;
-
-/* Один элемент: переменная, вложенный список или пропуск */
-foreach_array_item : foreach_variable
-                   | %empty
-                   ;
 
 /* список параметров: [модификаторы] [тип] [&] [...]$имя [= значение] */
 parameter_list_e : %empty
