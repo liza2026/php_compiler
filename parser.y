@@ -297,7 +297,6 @@ for_exprs : %empty
 /* $v, &$v, [$a, $b], [&$a, $b], list($a, $b) */
 foreach_variable : is_reference variable
                  | '[' foreach_array_items ']'
-                 | ARRAY '(' foreach_array_items ')'
                  | LIST '(' foreach_array_items ')'
                  ;
 
