@@ -247,13 +247,6 @@ xor             { Console::Log("Operator: xor"); return LOGICAL_XOR; }
 true            { Console::Log("Boolean: true"); return TRUE; }
 false           { Console::Log("Boolean: false"); return FALSE; }
 null            { Console::Log("Null: null"); return NULLPTR; }
-__(line|file|dir|function|class|method|trait)__ {
-    Console::Log("MagicConstant: " + string(yytext));
-    yylval.str = new std::string(yytext);
-    return MAGIC_CONST;
-}
-
-
 
     /* Операторы */
 "..."   { Console::Log("Operator: ..."); return ELLIPSIS; }

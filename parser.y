@@ -28,7 +28,7 @@ void yyerror(const char* msg);
 
 /* Токены */
 %token <str>  VARIABLE INLINE_HTML CONSTANT_STRING
-%token <str>  ID MAGIC_CONST
+%token <str>  ID
 %token <ival> LNUMBER
 %token <dval> DNUMBER
 %token ERROR
@@ -156,7 +156,6 @@ variable : VARIABLE
 expr : LNUMBER
      | DNUMBER
      | CONSTANT_STRING
-     | MAGIC_CONST
      | TRUE
      | FALSE
      | NULLPTR
