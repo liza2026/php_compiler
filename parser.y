@@ -90,7 +90,6 @@ void yyerror(const char* msg);
 %left  '[' '(' OBJECT_OPERATOR NULLSAFE_OBJECT_OPERATOR DOUBLE_COLON /* ->, ::, [ ], ( ) - самые тесные операции */
 %precedence NEW
 
-
 %%
 
 /* Программа и операторы */
@@ -100,14 +99,12 @@ program : %empty
         ;
 
 /* Верхний уровень - единственное место, где можно объявлять функции и классы.
-   Внутри блоков и тел if/while/for/... разрешён только stmt: вложенные объявления
-   (if (...) function f() {}, { class A {} }) в этом языке не поддерживаются. */
+   Внутри блоков и тел if/while/for/... разрешён только stmt */
 top_stmt : stmt
          | FUNCTION is_reference ID '(' parameter_list_e ')' return_type block
          | modifiers_e CLASS ID '{' class_member_list '}'
          | modifiers_e CLASS ID EXTENDS ID '{' class_member_list '}'
          ;
-
 
 stmt_list : %empty
           | stmt_list stmt
@@ -150,7 +147,7 @@ stmt : ';'
 block : '{' stmt_list '}'
       ;
 
-/* $a, $$a, $$$a, ${'a'.'b'}: всё остальное (индексы, ->, ::, вызовы) - операции над expr */
+/* $a, $$a, $$$a, ${'a'.'b'} */
 variable : VARIABLE
          | '$' variable
          | '$' '{' expr '}'
@@ -249,7 +246,7 @@ expr : LNUMBER
      | STATIC FN is_reference '(' parameter_list_e ')' return_type DOUBLE_ARROW expr %prec FN
      ;
 
-/* выражения через запятую: echo, заголовок for, условия ветки match */
+/* выражения через запятую: echo, заголовок for */
 expr_list : expr
           | expr_list ',' expr
           ;
@@ -296,15 +293,15 @@ for_exprs : %empty
 /* $v, &$v, [$a, $b], [&$a, $b] */
 /* Элементы списка переменных foreach */
 foreach_array_items : %empty
-		            | is_reference variable
+		    | is_reference variable
                     | foreach_array_items ',' is_reference variable
                     | foreach_array_items ','
                     ;
 
 /* список параметров: [модификаторы] [тип] [&] [...]$имя [= значение] */
 parameter_list_e : %empty
-                | parameter_list possible_comma
-                ;
+                 | parameter_list possible_comma
+                 ;
 
 parameter_list : parameter
                | parameter_list ',' parameter
@@ -350,7 +347,6 @@ type_name : ARRAY
           | ID
           ;
 
-
 /* хотя бы один аргумент */
 argument_list : expr
               | ID ':' expr
@@ -371,14 +367,13 @@ catch_types : ID
             | catch_types '|' ID
             ;
 
-
-/* члены класса и интерфейса */
+/* члены класса */
 class_member_list : %empty
                   | class_member_list member_modifiers type_e property_list ';' /* свойство требует модификатор */
                   | class_member_list VAR type_e property_list ';'
                   | class_member_list modifiers_e CONST const_list ';'
                   | class_member_list modifiers_e FUNCTION is_reference identifier '(' parameter_list_e ')' return_type block
-                  | class_member_list modifiers_e FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';' /* abstract / интерфейс */
+                  | class_member_list modifiers_e FUNCTION is_reference identifier '(' parameter_list_e ')' return_type ';'
                   ;
 
 /* свойства через запятую */
@@ -435,9 +430,7 @@ possible_comma : %empty
                | ','
                ;
 
-
 %%
-
 
 void yyerror(const char* msg) {
     if (lastToken == ERROR) return;   /* лексер уже сообщил об этой ошибке */
