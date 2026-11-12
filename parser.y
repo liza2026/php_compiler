@@ -260,8 +260,10 @@ array_items_opt : %empty
 
 array_items : expr
             | expr DOUBLE_ARROW expr
+            | ELLIPSIS expr
             | array_items ',' expr
             | array_items ',' expr DOUBLE_ARROW expr
+            | array_items ',' ELLIPSIS expr
             ;
 
 /* цепочка elseif: elseif (...) stmt */
