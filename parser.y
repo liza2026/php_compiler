@@ -40,7 +40,7 @@ void yyerror(const char* msg);
 %token ENDFOR ENDFOREACH ENDIF ENDSWITCH ENDWHILE
 %token EXTENDS FINAL FINALLY FN FOR FOREACH FUNCTION
 %token IF INSTANCEOF
-%token NEW PRINT
+%token NEW
 %token PRIVATE PROTECTED PUBLIC READONLY RETURN
 %token STATIC SWITCH THROW TRY USE VAR WHILE
 %token PARENT SELF
@@ -233,7 +233,6 @@ expr : LNUMBER
      | expr '?' expr ':' expr                  /* a ? b : c */
      | expr '?' ':' expr %prec SHORT_TERNARY   /* a ?: b: нужен свой уровень, иначе конфликт с полным ?: */
      | expr COALESCE expr
-     | PRINT expr %prec LOGICAL_AND /* print 1 and 2 == (print 1) and 2 */
      | THROW expr
      | NEW expr
      | expr INSTANCEOF expr
@@ -396,7 +395,7 @@ identifier : ID
            | EXTENDS | FINAL | FINALLY | FN | FOR | FOREACH
            | FUNCTION | IF
            | INSTANCEOF
-           | NEW | PRINT | PRIVATE | PROTECTED | PUBLIC | READONLY
+           | NEW | PRIVATE | PROTECTED | PUBLIC | READONLY
            | RETURN | STATIC | SWITCH | THROW | TRY
            | USE | VAR | WHILE
            | LOGICAL_AND | LOGICAL_OR | LOGICAL_XOR

@@ -201,7 +201,6 @@ function        { Console::Log("Keyword: function"); return FUNCTION; }
 if              { Console::Log("Keyword: if"); return IF; }
 instanceof      { Console::Log("Keyword: instanceof"); return INSTANCEOF; }
 new             { Console::Log("Keyword: new"); return NEW; }
-print           { Console::Log("Keyword: print"); return PRINT; }
 private         { Console::Log("Keyword: private"); return PRIVATE; }
 protected       { Console::Log("Keyword: protected"); return PROTECTED; }
 public          { Console::Log("Keyword: public"); return PUBLIC; }
