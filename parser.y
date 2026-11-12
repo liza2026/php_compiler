@@ -123,14 +123,14 @@ stmt : ';'
      | DO stmt WHILE '(' expr ')' ';'
      | FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' stmt
      | FOR '(' for_exprs ';' for_exprs ';' for_exprs ')' ':' stmt_list ENDFOR ';'
-     | FOREACH '(' expr AS variable ')' stmt
-     | FOREACH '(' expr AS '&' variable ')' stmt
+     | FOREACH '(' expr AS '$' ID ')' stmt
+     | FOREACH '(' expr AS '&' '$' ID ')' stmt
      | FOREACH '(' expr AS '[' foreach_array_items ']' ')' stmt
-     | FOREACH '(' expr AS variable DOUBLE_ARROW is_reference variable ')' stmt
-     | FOREACH '(' expr AS variable ')' ':' stmt_list ENDFOREACH ';'
-     | FOREACH '(' expr AS '&' variable ')' ':' stmt_list ENDFOREACH ';'
+     | FOREACH '(' expr AS '$' ID DOUBLE_ARROW is_reference '$' ID ')' stmt
+     | FOREACH '(' expr AS '$' ID ')' ':' stmt_list ENDFOREACH ';'
+     | FOREACH '(' expr AS '&' '$' ID ')' ':' stmt_list ENDFOREACH ';'
      | FOREACH '(' expr AS '[' foreach_array_items ']' ')' ':' stmt_list ENDFOREACH ';'
-     | FOREACH '(' expr AS variable DOUBLE_ARROW is_reference variable ')' ':' stmt_list ENDFOREACH ';'
+     | FOREACH '(' expr AS '$' ID DOUBLE_ARROW is_reference '$' ID ')' ':' stmt_list ENDFOREACH ';'
      | IF '(' expr ')' stmt else_if_stmts
      | IF '(' expr ')' stmt else_if_stmts ELSE stmt
      | IF '(' expr ')' ':' stmt_list alt_else_if_stmts ENDIF ';'
@@ -291,8 +291,8 @@ for_exprs : %empty
 /* $v, &$v, [$a, $b], [&$a, $b] */
 /* Элементы списка переменных foreach */
 foreach_array_items : %empty
-		    | is_reference variable
-                    | foreach_array_items ',' is_reference variable
+		    | is_reference '$' ID
+                    | foreach_array_items ',' is_reference '$' ID
                     | foreach_array_items ','
                     ;
 
