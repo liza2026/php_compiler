@@ -173,7 +173,6 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 array           { Console::Log("Keyword: array"); return ARRAY; }
 as              { Console::Log("Keyword: as"); return AS; }
 break           { Console::Log("Keyword: break"); return BREAK; }
-callable        { Console::Log("Keyword: callable"); return CALLABLE; }
 case            { Console::Log("Keyword: case"); return CASE; }
 catch           { Console::Log("Keyword: catch"); return CATCH; }
 class           { Console::Log("Keyword: class"); return CLASS; }

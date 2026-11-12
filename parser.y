@@ -35,7 +35,7 @@ void yyerror(const char* msg);
 
 /* Ключевые слова и константы */
 %token ECHO ARRAY TRUE FALSE NULLPTR
-%token AS BREAK CALLABLE CASE CATCH CLASS CLONE CONST CONTINUE
+%token AS BREAK CASE CATCH CLASS CLONE CONST CONTINUE
 %token DEFAULT DO ELSE ELSEIF
 %token ENDFOR ENDFOREACH ENDIF ENDSWITCH ENDWHILE
 %token EXTENDS FINALLY FN FOR FOREACH FUNCTION
@@ -178,7 +178,6 @@ expr : LNUMBER
      | expr DOUBLE_COLON variable
      | expr '(' ')'
      | expr '(' argument_list possible_comma ')'
-     | expr '(' ELLIPSIS ')' /* не пустой аргумент, а callable: $g = strlen(...); */
      | '&' expr %prec UNARY /* ссылка: = &$a, foreach (... as &$v), [&$a, $b] */
      | expr '='              expr
      | expr PLUS_EQUAL     expr
@@ -336,7 +335,6 @@ type : type_name
 
 /* одно имя типа; null, false, true - отдельные ключевые слова: int|false, string|null */
 type_name : ARRAY
-          | CALLABLE
           | NULLPTR
           | FALSE
           | TRUE
@@ -389,7 +387,7 @@ const_list : identifier '=' expr
 /* имя метода или константы класса: обычное слово или служебное (function private(), const list = 1) */
 identifier : ID
            | ECHO | ARRAY | TRUE | FALSE | NULLPTR
-           | AS | BREAK | CALLABLE | CASE | CATCH | CLASS | CLONE
+           | AS | BREAK | CASE | CATCH | CLASS | CLONE
            | CONST | CONTINUE | DEFAULT | DO | ELSE | ELSEIF
            | ENDFOR | ENDFOREACH | ENDIF | ENDSWITCH | ENDWHILE
            | EXTENDS | FINALLY | FN | FOR | FOREACH
