@@ -35,7 +35,7 @@ void yyerror(const char* msg);
 
 /* Ключевые слова и константы */
 %token ECHO ARRAY TRUE FALSE NULLPTR
-%token AS BREAK CASE CATCH CLASS CLONE CONST CONTINUE
+%token AS BREAK CASE CATCH CLASS CONST CONTINUE
 %token DEFAULT DO ELSE ELSEIF
 %token ENDFOR ENDFOREACH ENDIF ENDSWITCH ENDWHILE
 %token EXTENDS FINALLY FN FOR FOREACH FUNCTION
@@ -202,7 +202,6 @@ expr : LNUMBER
      | '~' expr %prec UNARY
      | '@' expr %prec UNARY
      | '!' expr
-     | CLONE expr %prec UNARY
      | expr '+' expr
      | expr '-' expr
      | expr '*' expr
@@ -387,7 +386,7 @@ const_list : identifier '=' expr
 /* имя метода или константы класса: обычное слово или служебное (function private(), const list = 1) */
 identifier : ID
            | ECHO | ARRAY | TRUE | FALSE | NULLPTR
-           | AS | BREAK | CASE | CATCH | CLASS | CLONE
+           | AS | BREAK | CASE | CATCH | CLASS
            | CONST | CONTINUE | DEFAULT | DO | ELSE | ELSEIF
            | ENDFOR | ENDFOREACH | ENDIF | ENDSWITCH | ENDWHILE
            | EXTENDS | FINALLY | FN | FOR | FOREACH

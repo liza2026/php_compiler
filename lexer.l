@@ -176,7 +176,6 @@ break           { Console::Log("Keyword: break"); return BREAK; }
 case            { Console::Log("Keyword: case"); return CASE; }
 catch           { Console::Log("Keyword: catch"); return CATCH; }
 class           { Console::Log("Keyword: class"); return CLASS; }
-clone           { Console::Log("Keyword: clone"); return CLONE; }
 const           { Console::Log("Keyword: const"); return CONST; }
 continue        { Console::Log("Keyword: continue"); return CONTINUE; }
 default         { Console::Log("Keyword: default"); return DEFAULT; }
