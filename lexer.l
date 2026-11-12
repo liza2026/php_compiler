@@ -170,7 +170,6 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 
 
     /* Ключевые слова */
-abstract        { Console::Log("Keyword: abstract"); return ABSTRACT; }
 array           { Console::Log("Keyword: array"); return ARRAY; }
 as              { Console::Log("Keyword: as"); return AS; }
 break           { Console::Log("Keyword: break"); return BREAK; }
@@ -192,7 +191,6 @@ endif           { Console::Log("Keyword: endif"); return ENDIF; }
 endswitch       { Console::Log("Keyword: endswitch"); return ENDSWITCH; }
 endwhile        { Console::Log("Keyword: endwhile"); return ENDWHILE; }
 extends         { Console::Log("Keyword: extends"); return EXTENDS; }
-final           { Console::Log("Keyword: final"); return FINAL; }
 finally         { Console::Log("Keyword: finally"); return FINALLY; }
 fn              { Console::Log("Keyword: fn"); return FN; }
 for             { Console::Log("Keyword: for"); return FOR; }
@@ -204,7 +202,6 @@ new             { Console::Log("Keyword: new"); return NEW; }
 private         { Console::Log("Keyword: private"); return PRIVATE; }
 protected       { Console::Log("Keyword: protected"); return PROTECTED; }
 public          { Console::Log("Keyword: public"); return PUBLIC; }
-readonly        { Console::Log("Keyword: readonly"); return READONLY; }
 return          { Console::Log("Keyword: return"); return RETURN; }
 static          { Console::Log("Keyword: static"); return STATIC; }
 switch          { Console::Log("Keyword: switch"); return SWITCH; }

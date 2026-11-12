@@ -35,13 +35,13 @@ void yyerror(const char* msg);
 
 /* Ключевые слова и константы */
 %token ECHO ARRAY TRUE FALSE NULLPTR
-%token ABSTRACT AS BREAK CALLABLE CASE CATCH CLASS CLONE CONST CONTINUE
+%token AS BREAK CALLABLE CASE CATCH CLASS CLONE CONST CONTINUE
 %token DEFAULT DO ELSE ELSEIF
 %token ENDFOR ENDFOREACH ENDIF ENDSWITCH ENDWHILE
-%token EXTENDS FINAL FINALLY FN FOR FOREACH FUNCTION
+%token EXTENDS FINALLY FN FOR FOREACH FUNCTION
 %token IF INSTANCEOF
 %token NEW
-%token PRIVATE PROTECTED PUBLIC READONLY RETURN
+%token PRIVATE PROTECTED PUBLIC RETURN
 %token STATIC SWITCH THROW TRY USE VAR WHILE
 %token PARENT SELF
 
@@ -389,13 +389,13 @@ const_list : identifier '=' expr
 /* имя метода или константы класса: обычное слово или служебное (function private(), const list = 1) */
 identifier : ID
            | ECHO | ARRAY | TRUE | FALSE | NULLPTR
-           | ABSTRACT | AS | BREAK | CALLABLE | CASE | CATCH | CLASS | CLONE
+           | AS | BREAK | CALLABLE | CASE | CATCH | CLASS | CLONE
            | CONST | CONTINUE | DEFAULT | DO | ELSE | ELSEIF
            | ENDFOR | ENDFOREACH | ENDIF | ENDSWITCH | ENDWHILE
-           | EXTENDS | FINAL | FINALLY | FN | FOR | FOREACH
+           | EXTENDS | FINALLY | FN | FOR | FOREACH
            | FUNCTION | IF
            | INSTANCEOF
-           | NEW | PRIVATE | PROTECTED | PUBLIC | READONLY
+           | NEW | PRIVATE | PROTECTED | PUBLIC
            | RETURN | STATIC | SWITCH | THROW | TRY
            | USE | VAR | WHILE
            | LOGICAL_AND | LOGICAL_OR | LOGICAL_XOR
@@ -413,9 +413,6 @@ member_modifier : PUBLIC
                 | PROTECTED
                 | PRIVATE
                 | STATIC
-                | ABSTRACT
-                | FINAL
-                | READONLY
                 ;
 
 /* захваченные переменные use ($a, &$b) */
