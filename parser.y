@@ -27,7 +27,7 @@ void yyerror(const char* msg);
 %start program
 
 /* Токены */
-%token <str>  VARIABLE INLINE_HTML CONSTANT_STRING
+%token <str>  INLINE_HTML CONSTANT_STRING
 %token <str>  ID
 %token <ival> LNUMBER
 %token <dval> DNUMBER
@@ -148,7 +148,7 @@ block : '{' stmt_list '}'
       ;
 
 /* $a, $$a, $$$a, ${'a'.'b'} */
-variable : VARIABLE
+variable : '$' ID
          | '$' variable
          | '$' '{' expr '}'
          ;
@@ -307,9 +307,9 @@ parameter_list : parameter
 
 /* [модификаторы] [тип] [&] $имя = значение по умолчанию
    [модификаторы] [тип] [&] ...$имя */
-parameter : modifiers_e type_e is_reference VARIABLE
-          | modifiers_e type_e is_reference VARIABLE '=' expr
-          | modifiers_e type_e is_reference ELLIPSIS VARIABLE
+parameter : modifiers_e type_e is_reference '$' ID
+          | modifiers_e type_e is_reference '$' ID '=' expr
+          | modifiers_e type_e is_reference ELLIPSIS '$' ID
           ;
 
 /* необязательный &: параметр по ссылке, function &f(), use (&$x) */
@@ -356,7 +356,7 @@ argument_list : expr
 /* catch (A | B $e), catch (A) - переменная необязательна */
 catch_list_e : %empty
              | catch_list_e CATCH '(' catch_types ')' block            /* catch (A) {}: переменная необязательна */
-             | catch_list_e CATCH '(' catch_types VARIABLE ')' block /* catch ($e) без типа — ошибка */
+             | catch_list_e CATCH '(' catch_types '$' ID ')' block /* catch ($e) без типа — ошибка */
              ;
 
 /* типы исключений в catch */
@@ -374,10 +374,10 @@ class_member_list : %empty
                   ;
 
 /* свойства через запятую */
-property_list : VARIABLE
-              | VARIABLE '=' expr
-              | property_list ',' VARIABLE
-              | property_list ',' VARIABLE '=' expr
+property_list : '$' ID
+              | '$' ID '=' expr
+              | property_list ',' '$' ID
+              | property_list ',' '$' ID '=' expr
               ;
 
 /* константы через запятую */
@@ -415,8 +415,8 @@ member_modifier : PUBLIC
                 ;
 
 /* захваченные переменные use ($a, &$b) */
-lexical_var_list : is_reference VARIABLE
-                 | lexical_var_list ',' is_reference VARIABLE
+lexical_var_list : is_reference '$' ID
+                 | lexical_var_list ',' is_reference '$' ID
                  ;
 
 /* необязательная запятая в конце списка */
