@@ -85,7 +85,7 @@ DIGITS      {DIGIT}(_?{DIGIT})*
 EXPONENT    e[+-]?{DIGITS}
 
 LABEL       [A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*
-VARIABLE    \${LABEL}
+DOLLAR_NAME \${LABEL}
 
 INTEGER      [1-9]{DIGIT}*(_{DIGIT}+)*|0
 INT_DEC      [1-9](_?{DIGIT})*|0
@@ -318,10 +318,17 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     return ID;
 }
 
-{VARIABLE} {
+    /* $имя -> два токена '$' и ID (имя идёт следом из очереди): пробелов между ними быть не может,
+       а имя - всегда ID, даже если совпадает с ключевым словом ($class, $if) */
+{DOLLAR_NAME} {
     Console::Log("Variable: " + string(yytext));
-    yylval.str = new std::string(yytext + 1);
-    return VARIABLE;
+    pushString(ID, yytext + 1);
+    return '$';
+}
+    /* $$имя, ${выражение}: '$' сам по себе допустим только перед $ или { без пробелов; остальные '$' - ошибка */
+"$"/[$\{] {
+    Console::Log("Separator: $");
+    return '$';
 }
 \$[0-9][A-Za-z0-9_]* {
     BEGIN(INITIAL);
@@ -554,31 +561,35 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 }
 
     /* Простые вставки: $x, $x[...], $x->y, $x?->y -> . ( $x ), . ( $x [ ключ ] ), . ( $x -> y ) */
-<STRING_D>{VARIABLE}/"[" {
+<STRING_D>{DOLLAR_NAME}/"[" {
     Console::Log("Variable: " + string(yytext));
     startInterpolation(stringBuf);
-    pushString(VARIABLE, yytext + 1);
+    pushToken('$');
+    pushString(ID, yytext + 1);
     yy_push_state(INTERP_INDEX);
     return popPending();
 }
-<STRING_D>{VARIABLE}/"->"[A-Za-z_\x80-\xff] {
+<STRING_D>{DOLLAR_NAME}/"->"[A-Za-z_\x80-\xff] {
     Console::Log("Variable: " + string(yytext));
     startInterpolation(stringBuf);
-    pushString(VARIABLE, yytext + 1);
+    pushToken('$');
+    pushString(ID, yytext + 1);
     yy_push_state(INTERP_PROP);
     return popPending();
 }
-<STRING_D>{VARIABLE}/"?->"[A-Za-z_\x80-\xff] {
+<STRING_D>{DOLLAR_NAME}/"?->"[A-Za-z_\x80-\xff] {
     Console::Log("Variable: " + string(yytext));
     startInterpolation(stringBuf);
-    pushString(VARIABLE, yytext + 1);
+    pushToken('$');
+    pushString(ID, yytext + 1);
     yy_push_state(INTERP_PROP);
     return popPending();
 }
-<STRING_D>{VARIABLE} {
+<STRING_D>{DOLLAR_NAME} {
     Console::Log("Variable: " + string(yytext));
     startInterpolation(stringBuf);
-    pushString(VARIABLE, yytext + 1);
+    pushToken('$');
+    pushString(ID, yytext + 1);
     pushToken(')');
     return popPending();
 }
@@ -610,10 +621,10 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     yylval.ival = value;
     return LNUMBER;
 }
-<INTERP_INDEX>{VARIABLE} {
+<INTERP_INDEX>{DOLLAR_NAME} {
     Console::Log("Variable: " + string(yytext));
-    yylval.str = new std::string(yytext + 1);
-    return VARIABLE;
+    pushString(ID, yytext + 1);
+    return '$';
 }
 <INTERP_INDEX>"]" {
     Console::Log("Separator: ]");
@@ -658,7 +669,8 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 <STRING_D>"${"{LABEL}/[\[}] {
     Console::Log("InterpolationStart: ${");
     startInterpolation(stringBuf);
-    pushString(VARIABLE, yytext + 2);
+    pushToken('$');
+    pushString(ID, yytext + 2);
     interps.push_back({0, false});
     yy_push_state(IN_CURLY);
     return popPending();
@@ -707,7 +719,7 @@ void pushToken(int token) {
     pendingTokens.push_back(pending);
 }
 
-/* токен со строковым значением (CONSTANT_STRING, VARIABLE, ID) - в конец очереди */
+/* токен со строковым значением (CONSTANT_STRING, ID) - в конец очереди */
 void pushString(int token, const std::string& text) {
     PendingToken pending;
     pending.token = token;
