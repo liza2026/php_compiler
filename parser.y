@@ -34,7 +34,7 @@ void yyerror(const char* msg);
 %token ERROR
 
 /* Ключевые слова и константы */
-%token ECHO ARRAY TRUE FALSE NULLPTR
+%token ECHO_KW ARRAY TRUE FALSE NULLPTR
 %token AS BREAK CASE CATCH CLASS CONST CONTINUE
 %token DEFAULT DO ELSE ELSEIF
 %token ENDFOR ENDFOREACH ENDIF ENDSWITCH ENDWHILE
@@ -117,7 +117,7 @@ stmt : ';'
      | BREAK expr_e ';'
      | CONTINUE expr_e ';'
      | RETURN expr_e ';'
-     | ECHO expr_list ';'
+     | ECHO_KW expr_list ';'
      | WHILE '(' expr ')' stmt
      | WHILE '(' expr ')' ':' stmt_list ENDWHILE ';'
      | DO stmt WHILE '(' expr ')' ';'
@@ -387,7 +387,7 @@ const_list : identifier '=' expr
 
 /* имя метода или константы класса: обычное слово или служебное (function private(), const list = 1) */
 identifier : ID
-           | ECHO | ARRAY | TRUE | FALSE | NULLPTR
+           | ECHO_KW | ARRAY | TRUE | FALSE | NULLPTR
            | AS | BREAK | CASE | CATCH | CLASS
            | CONST | CONTINUE | DEFAULT | DO | ELSE | ELSEIF
            | ENDFOR | ENDFOREACH | ENDIF | ENDSWITCH | ENDWHILE
@@ -429,5 +429,5 @@ possible_comma : %empty
 void yyerror(const char* msg) {
     if (lastToken == ERROR) return;   /* лексер уже сообщил об этой ошибке */
     parserErrors++;
-    fprintf(stderr, "Syntax error at line %d: %s\n", yylineno, msg);
+    Console::ParserError(yylineno, msg);
 }

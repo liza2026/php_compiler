@@ -20,6 +20,11 @@ add_executable(php_parser
         ${BISON_Parser_OUTPUTS}
 )
 
+target_compile_definitions(php_parser PRIVATE
+        CONSOLE_LEXER_LOG_ENABLED
+        CONSOLE_PARSER_LOG_ENABLED
+)
+
 target_include_directories(php_parser PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
 
 

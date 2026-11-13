@@ -1,4 +1,4 @@
-    /* не поддерживаем сканирование нескольких файлов */
+/* не поддерживаем сканирование нескольких файлов */
 %option noyywrap
     /* не вводим тексты с клавиатуры */
 %option never-interactive
@@ -117,16 +117,16 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 
     /*  Вне PHP-кода */
 <NOPHP>"<?php" {
-    Console::Log("OpenTag: <?php");
+    Console::LexLog(yylineno, "OpenTag: <?php");
     BEGIN(INITIAL);
 }
 <NOPHP>"<?=" {
-    Console::Log("OpenTagEcho: <?=");
+    Console::LexLog(yylineno, "OpenTagEcho: <?=");
     BEGIN(INITIAL);
-    return ECHO;
+    return ECHO_KW;
 }
 <NOPHP>([^<]|"<"[^?<])+|"<" {
-    Console::Log("HTML text: \"" + string(yytext) + "\"");
+    Console::LexLog(yylineno, "HTML text: \"" + string(yytext) + "\"");
     yylval.str = new std::string(yytext);
     return INLINE_HTML;
 }
@@ -135,12 +135,12 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
     /* внутри {$ ... } это не закрывающий тег, а обычные ? и > */
 <IN_CURLY>"?>" {
     yyless(1);
-    Console::Log("Operator: ?");
+    Console::LexLog(yylineno, "Operator: ?");
     return '?';
 }
 
 "?>" {
-    Console::Log("CloseTag: ?>");
+    Console::LexLog(yylineno, "CloseTag: ?>");
     BEGIN(NOPHP);
     return ';';
 }
@@ -148,17 +148,17 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 
     /* внутри вставки {$ ... } каждая { открывает вложенное состояние, а } закрывает его */
 <IN_CURLY>"{" {
-    Console::Log("Separator: {");
+    Console::LexLog(yylineno, "Separator: {");
     interps.back().depth++;
     return '{';
 }
 <IN_CURLY>"}" {
     if (interps.back().depth > 0) {
         interps.back().depth--;
-        Console::Log("Separator: }");
+        Console::LexLog(yylineno, "Separator: }");
         return '}';
     } else {
-        Console::Log("InterpolationEnd: }");
+        Console::LexLog(yylineno, "InterpolationEnd: }");
         /* у ${выражение} парсер видит '$' '{' выражение '}', у остальных вставок '}' в токены не попадает */
         if (interps.back().dollarExpr) pushToken('}');
         pushToken(')');
@@ -170,108 +170,108 @@ STRING_TEXT (\\(.|\n)|[^"\\${])+
 
 
     /* Ключевые слова */
-array           { Console::Log("Keyword: array"); return ARRAY; }
-as              { Console::Log("Keyword: as"); return AS; }
-break           { Console::Log("Keyword: break"); return BREAK; }
-case            { Console::Log("Keyword: case"); return CASE; }
-catch           { Console::Log("Keyword: catch"); return CATCH; }
-class           { Console::Log("Keyword: class"); return CLASS; }
-const           { Console::Log("Keyword: const"); return CONST; }
-continue        { Console::Log("Keyword: continue"); return CONTINUE; }
-default         { Console::Log("Keyword: default"); return DEFAULT; }
-do              { Console::Log("Keyword: do"); return DO; }
-echo            { Console::Log("Keyword: echo"); return ECHO; }
-else            { Console::Log("Keyword: else"); return ELSE; }
-elseif          { Console::Log("Keyword: elseif"); return ELSEIF; }
-endfor          { Console::Log("Keyword: endfor"); return ENDFOR; }
-endforeach      { Console::Log("Keyword: endforeach"); return ENDFOREACH; }
-endif           { Console::Log("Keyword: endif"); return ENDIF; }
-endswitch       { Console::Log("Keyword: endswitch"); return ENDSWITCH; }
-endwhile        { Console::Log("Keyword: endwhile"); return ENDWHILE; }
-extends         { Console::Log("Keyword: extends"); return EXTENDS; }
-finally         { Console::Log("Keyword: finally"); return FINALLY; }
-fn              { Console::Log("Keyword: fn"); return FN; }
-for             { Console::Log("Keyword: for"); return FOR; }
-foreach         { Console::Log("Keyword: foreach"); return FOREACH; }
-function        { Console::Log("Keyword: function"); return FUNCTION; }
-if              { Console::Log("Keyword: if"); return IF; }
-instanceof      { Console::Log("Keyword: instanceof"); return INSTANCEOF; }
-new             { Console::Log("Keyword: new"); return NEW; }
-private         { Console::Log("Keyword: private"); return PRIVATE; }
-protected       { Console::Log("Keyword: protected"); return PROTECTED; }
-public          { Console::Log("Keyword: public"); return PUBLIC; }
-return          { Console::Log("Keyword: return"); return RETURN; }
-static          { Console::Log("Keyword: static"); return STATIC; }
-switch          { Console::Log("Keyword: switch"); return SWITCH; }
-parent          { Console::Log("Keyword: parent"); return PARENT; }
-self            { Console::Log("Keyword: self"); return SELF; }
-throw           { Console::Log("Keyword: throw"); return THROW; }
-try             { Console::Log("Keyword: try"); return TRY; }
-use             { Console::Log("Keyword: use"); return USE; }
-var             { Console::Log("Keyword: var"); return VAR; }
-while           { Console::Log("Keyword: while"); return WHILE; }
+array           { Console::LexLog(yylineno, "Keyword: array"); return ARRAY; }
+as              { Console::LexLog(yylineno, "Keyword: as"); return AS; }
+break           { Console::LexLog(yylineno, "Keyword: break"); return BREAK; }
+case            { Console::LexLog(yylineno, "Keyword: case"); return CASE; }
+catch           { Console::LexLog(yylineno, "Keyword: catch"); return CATCH; }
+class           { Console::LexLog(yylineno, "Keyword: class"); return CLASS; }
+const           { Console::LexLog(yylineno, "Keyword: const"); return CONST; }
+continue        { Console::LexLog(yylineno, "Keyword: continue"); return CONTINUE; }
+default         { Console::LexLog(yylineno, "Keyword: default"); return DEFAULT; }
+do              { Console::LexLog(yylineno, "Keyword: do"); return DO; }
+echo            { Console::LexLog(yylineno, "Keyword: echo"); return ECHO_KW; }
+else            { Console::LexLog(yylineno, "Keyword: else"); return ELSE; }
+elseif          { Console::LexLog(yylineno, "Keyword: elseif"); return ELSEIF; }
+endfor          { Console::LexLog(yylineno, "Keyword: endfor"); return ENDFOR; }
+endforeach      { Console::LexLog(yylineno, "Keyword: endforeach"); return ENDFOREACH; }
+endif           { Console::LexLog(yylineno, "Keyword: endif"); return ENDIF; }
+endswitch       { Console::LexLog(yylineno, "Keyword: endswitch"); return ENDSWITCH; }
+endwhile        { Console::LexLog(yylineno, "Keyword: endwhile"); return ENDWHILE; }
+extends         { Console::LexLog(yylineno, "Keyword: extends"); return EXTENDS; }
+finally         { Console::LexLog(yylineno, "Keyword: finally"); return FINALLY; }
+fn              { Console::LexLog(yylineno, "Keyword: fn"); return FN; }
+for             { Console::LexLog(yylineno, "Keyword: for"); return FOR; }
+foreach         { Console::LexLog(yylineno, "Keyword: foreach"); return FOREACH; }
+function        { Console::LexLog(yylineno, "Keyword: function"); return FUNCTION; }
+if              { Console::LexLog(yylineno, "Keyword: if"); return IF; }
+instanceof      { Console::LexLog(yylineno, "Keyword: instanceof"); return INSTANCEOF; }
+new             { Console::LexLog(yylineno, "Keyword: new"); return NEW; }
+private         { Console::LexLog(yylineno, "Keyword: private"); return PRIVATE; }
+protected       { Console::LexLog(yylineno, "Keyword: protected"); return PROTECTED; }
+public          { Console::LexLog(yylineno, "Keyword: public"); return PUBLIC; }
+return          { Console::LexLog(yylineno, "Keyword: return"); return RETURN; }
+static          { Console::LexLog(yylineno, "Keyword: static"); return STATIC; }
+switch          { Console::LexLog(yylineno, "Keyword: switch"); return SWITCH; }
+parent          { Console::LexLog(yylineno, "Keyword: parent"); return PARENT; }
+self            { Console::LexLog(yylineno, "Keyword: self"); return SELF; }
+throw           { Console::LexLog(yylineno, "Keyword: throw"); return THROW; }
+try             { Console::LexLog(yylineno, "Keyword: try"); return TRY; }
+use             { Console::LexLog(yylineno, "Keyword: use"); return USE; }
+var             { Console::LexLog(yylineno, "Keyword: var"); return VAR; }
+while           { Console::LexLog(yylineno, "Keyword: while"); return WHILE; }
 
     /* Ключевые слова, являющиеся операторами */
-and             { Console::Log("Operator: and"); return LOGICAL_AND; }
-or              { Console::Log("Operator: or"); return LOGICAL_OR; }
-xor             { Console::Log("Operator: xor"); return LOGICAL_XOR; }
+and             { Console::LexLog(yylineno, "Operator: and"); return LOGICAL_AND; }
+or              { Console::LexLog(yylineno, "Operator: or"); return LOGICAL_OR; }
+xor             { Console::LexLog(yylineno, "Operator: xor"); return LOGICAL_XOR; }
 
     /* Константы */
-true            { Console::Log("Boolean: true"); return TRUE; }
-false           { Console::Log("Boolean: false"); return FALSE; }
-null            { Console::Log("Null: null"); return NULLPTR; }
+true            { Console::LexLog(yylineno, "Boolean: true"); return TRUE; }
+false           { Console::LexLog(yylineno, "Boolean: false"); return FALSE; }
+null            { Console::LexLog(yylineno, "Null: null"); return NULLPTR; }
 
     /* Операторы */
-"..."   { Console::Log("Operator: ..."); return ELLIPSIS; }
-"**="   { Console::Log("Operator: **="); return POW_EQUAL; }
-"<=>"   { Console::Log("Operator: <=>"); return SPACESHIP; }
-"??="   { Console::Log("Operator: ?" "?="); return COALESCE_EQUAL; }
-"==="   { Console::Log("Operator: ==="); return IS_IDENTICAL; }
-"!=="   { Console::Log("Operator: !=="); return IS_NOT_IDENTICAL; }
-"=="    { Console::Log("Operator: =="); return IS_EQUAL; }
-"!="|"<>" { Console::Log("Operator: !="); return IS_NOT_EQUAL; }
-"<="    { Console::Log("Operator: <="); return IS_SMALLER_OR_EQUAL; }
-">="    { Console::Log("Operator: >="); return IS_GREATER_OR_EQUAL; }
-"&&"    { Console::Log("Operator: &&"); return BOOLEAN_AND; }
-"||"    { Console::Log("Operator: ||"); return BOOLEAN_OR; }
-"??"    { Console::Log("Operator: ??"); return COALESCE; }
-"=>"    { Console::Log("Operator: =>"); return DOUBLE_ARROW; }
-"++"    { Console::Log("Operator: ++"); return INC; }
-"--"    { Console::Log("Operator: --"); return DEC; }
-"**"    { Console::Log("Operator: **"); return POW; }
-"+="    { Console::Log("Operator: +="); return PLUS_EQUAL; }
-"-="    { Console::Log("Operator: -="); return MINUS_EQUAL; }
-"*="    { Console::Log("Operator: *="); return MUL_EQUAL; }
-"/="    { Console::Log("Operator: /="); return DIV_EQUAL; }
-".="    { Console::Log("Operator: .="); return CONCAT_EQUAL; }
-"%="    { Console::Log("Operator: %="); return MOD_EQUAL; }
-"&="    { Console::Log("Operator: &="); return AND_EQUAL; }
-"|="    { Console::Log("Operator: |="); return OR_EQUAL; }
-"^="    { Console::Log("Operator: ^="); return XOR_EQUAL; }
-"<<="   { Console::Log("Operator: <<="); return SL_EQUAL; }
-">>="   { Console::Log("Operator: >>="); return SR_EQUAL; }
-"<<"    { Console::Log("Operator: <<"); return SL; }
-">>"    { Console::Log("Operator: >>"); return SR; }
+"..."   { Console::LexLog(yylineno, "Operator: ..."); return ELLIPSIS; }
+"**="   { Console::LexLog(yylineno, "Operator: **="); return POW_EQUAL; }
+"<=>"   { Console::LexLog(yylineno, "Operator: <=>"); return SPACESHIP; }
+"??="   { Console::LexLog(yylineno, "Operator: ?" "?="); return COALESCE_EQUAL; }
+"==="   { Console::LexLog(yylineno, "Operator: ==="); return IS_IDENTICAL; }
+"!=="   { Console::LexLog(yylineno, "Operator: !=="); return IS_NOT_IDENTICAL; }
+"=="    { Console::LexLog(yylineno, "Operator: =="); return IS_EQUAL; }
+"!="|"<>" { Console::LexLog(yylineno, "Operator: !="); return IS_NOT_EQUAL; }
+"<="    { Console::LexLog(yylineno, "Operator: <="); return IS_SMALLER_OR_EQUAL; }
+">="    { Console::LexLog(yylineno, "Operator: >="); return IS_GREATER_OR_EQUAL; }
+"&&"    { Console::LexLog(yylineno, "Operator: &&"); return BOOLEAN_AND; }
+"||"    { Console::LexLog(yylineno, "Operator: ||"); return BOOLEAN_OR; }
+"??"    { Console::LexLog(yylineno, "Operator: ??"); return COALESCE; }
+"=>"    { Console::LexLog(yylineno, "Operator: =>"); return DOUBLE_ARROW; }
+"++"    { Console::LexLog(yylineno, "Operator: ++"); return INC; }
+"--"    { Console::LexLog(yylineno, "Operator: --"); return DEC; }
+"**"    { Console::LexLog(yylineno, "Operator: **"); return POW; }
+"+="    { Console::LexLog(yylineno, "Operator: +="); return PLUS_EQUAL; }
+"-="    { Console::LexLog(yylineno, "Operator: -="); return MINUS_EQUAL; }
+"*="    { Console::LexLog(yylineno, "Operator: *="); return MUL_EQUAL; }
+"/="    { Console::LexLog(yylineno, "Operator: /="); return DIV_EQUAL; }
+".="    { Console::LexLog(yylineno, "Operator: .="); return CONCAT_EQUAL; }
+"%="    { Console::LexLog(yylineno, "Operator: %="); return MOD_EQUAL; }
+"&="    { Console::LexLog(yylineno, "Operator: &="); return AND_EQUAL; }
+"|="    { Console::LexLog(yylineno, "Operator: |="); return OR_EQUAL; }
+"^="    { Console::LexLog(yylineno, "Operator: ^="); return XOR_EQUAL; }
+"<<="   { Console::LexLog(yylineno, "Operator: <<="); return SL_EQUAL; }
+">>="   { Console::LexLog(yylineno, "Operator: >>="); return SR_EQUAL; }
+"<<"    { Console::LexLog(yylineno, "Operator: <<"); return SL; }
+">>"    { Console::LexLog(yylineno, "Operator: >>"); return SR; }
 
     /* Односимвольные операторы и разделители */
 [-+*/%.=<>!?&|^~@] {
-    Console::Log("Operator: " + string(yytext));
+    Console::LexLog(yylineno, "Operator: " + string(yytext));
     return yytext[0];
 }
 [()\[\],;:] {
-    Console::Log("Separator: " + string(yytext));
+    Console::LexLog(yylineno, "Separator: " + string(yytext));
     return yytext[0];
 }
 "$" {
-    Console::Log("Dollar: $");
+    Console::LexLog(yylineno, "Dollar: $");
     return '$';
 }
 "{" {
-    Console::Log("Separator: {");
+    Console::LexLog(yylineno, "Separator: {");
     return '{';
 }
 "}" {
-    Console::Log("Separator: }");
+    Console::LexLog(yylineno, "Separator: }");
     return '}';
 }
 
@@ -279,23 +279,23 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 
     /* Обращение к члену класса: после -> ?-> :: идёт имя, даже ключевое слово */
 "->" {
-    Console::Log("Operator: ->");
+    Console::LexLog(yylineno, "Operator: ->");
     yy_push_state(MEMBER);
     return OBJECT_OPERATOR;
 }
 "?->" {
-    Console::Log("Operator: ?->");
+    Console::LexLog(yylineno, "Operator: ?->");
     yy_push_state(MEMBER);
     return NULLSAFE_OBJECT_OPERATOR;
 }
 "::" {
-    Console::Log("Operator: ::");
+    Console::LexLog(yylineno, "Operator: ::");
     yy_push_state(MEMBER);
     return DOUBLE_COLON;
 }
 
 <MEMBER>{LABEL} {
-    Console::Log("Identifier: " + string(yytext));
+    Console::LexLog(yylineno, "Identifier: " + string(yytext));
     yylval.str = new std::string(yytext);
     yy_pop_state();
     return ID;
@@ -313,7 +313,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     /* Идентификаторы и переменные */
     /* ключевые слова выше: при равной длине побеждает правило, написанное раньше */
 {LABEL} {
-    Console::Log("Identifier: " + string(yytext));
+    Console::LexLog(yylineno, "Identifier: " + string(yytext));
     yylval.str = new std::string(yytext);
     return ID;
 }
@@ -321,18 +321,18 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     /* $имя -> два токена '$' и ID (имя идёт следом из очереди): пробелов между ними быть не может,
        а имя - всегда ID, даже если совпадает с ключевым словом ($class, $if) */
 {DOLLAR_NAME} {
-    Console::Log("Variable: " + string(yytext));
+    Console::LexLog(yylineno, "Variable: " + string(yytext));
     pushString(ID, yytext + 1);
     return '$';
 }
     /* $$имя, ${выражение}: '$' сам по себе допустим только перед $ или { без пробелов; остальные '$' - ошибка */
 "$"/[$\{] {
-    Console::Log("Separator: $");
+    Console::LexLog(yylineno, "Separator: $");
     return '$';
 }
 \$[0-9][A-Za-z0-9_]* {
     BEGIN(INITIAL);
-    Console::Error("Invalid variable name '" + string(yytext) + "' at line " + std::to_string(yylineno));
+    Console::LexError(yylineno, "Invalid variable name '" + string(yytext) + "'");
     lexerErrors++;
     return ERROR;
 }
@@ -341,7 +341,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     /* Числовые константы */
 {FLOAT} {
     double value = std::strtod(stripUnderscores(yytext).c_str(), nullptr);
-    Console::Log("Float: " + formatDouble(value));
+    Console::LexLog(yylineno, "Float: " + formatDouble(value));
     yylval.dval = value;
     return DNUMBER;
 }
@@ -349,13 +349,13 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     std::string int_str = stripUnderscores(yytext).substr(2);
     if (isBigInteger(int_str, 16)) {
         double value = calcBigInteger(int_str, 16);
-        Console::Log("Float: " + formatDouble(value));
+        Console::LexLog(yylineno, "Float: " + formatDouble(value));
         yylval.dval = value;
         return DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 16);
-        Console::Log("Integer (hex): " + std::to_string(value));
+        Console::LexLog(yylineno, "Integer (hex): " + std::to_string(value));
         yylval.ival = value;
         return LNUMBER;
     }
@@ -364,13 +364,13 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     std::string int_str = stripUnderscores(yytext).substr(2);
     if (isBigInteger(int_str, 2)) {
         double value = calcBigInteger(int_str, 2);
-        Console::Log("Float: " + formatDouble(value));
+        Console::LexLog(yylineno, "Float: " + formatDouble(value));
         yylval.dval = value;
         return DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 2);
-        Console::Log("Integer (binary): " + std::to_string(value));
+        Console::LexLog(yylineno, "Integer (binary): " + std::to_string(value));
         yylval.ival = value;
         return LNUMBER;
     }
@@ -379,13 +379,13 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     std::string int_str = stripUnderscores(yytext).substr(2);
     if (isBigInteger(int_str, 8)) {
         double value = calcBigInteger(int_str, 8);
-        Console::Log("Float: " + formatDouble(value));
+        Console::LexLog(yylineno, "Float: " + formatDouble(value));
         yylval.dval = value;
         return DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 8);
-        Console::Log("Integer (octal): " + std::to_string(value));
+        Console::LexLog(yylineno, "Integer (octal): " + std::to_string(value));
         yylval.ival = value;
         return LNUMBER;
     }
@@ -394,13 +394,13 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     std::string int_str = stripUnderscores(yytext).substr(1);
     if (isBigInteger(int_str, 8)) {
         double value = calcBigInteger(int_str, 8);
-        Console::Log("Float: " + formatDouble(value));
+        Console::LexLog(yylineno, "Float: " + formatDouble(value));
         yylval.dval = value;
         return DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 8);
-        Console::Log("Integer (octal): " + std::to_string(value));
+        Console::LexLog(yylineno, "Integer (octal): " + std::to_string(value));
         yylval.ival = value;
         return LNUMBER;
     }
@@ -409,13 +409,13 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     std::string int_str = stripUnderscores(yytext);
     if (isBigInteger(int_str, 10)) {
         double value = calcBigInteger(int_str, 10);
-        Console::Log("Float: " + formatDouble(value));
+        Console::LexLog(yylineno, "Float: " + formatDouble(value));
         yylval.dval = value;
         return DNUMBER;
     }
     else {
         long long value = std::strtoll(int_str.c_str(), nullptr, 10);
-        Console::Log("Integer: " + std::to_string(value));
+        Console::LexLog(yylineno, "Integer: " + std::to_string(value));
         yylval.ival = value;
         return LNUMBER;
     }
@@ -423,7 +423,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     /* число с мусорным хвостом всегда длиннее корректного числа на том же месте */
 ({NUMBER_ANY})[A-Za-z0-9_]+ {
     BEGIN(INITIAL);
-    Console::Error("Invalid numeric literal '" + string(yytext) + "' at line " + std::to_string(yylineno));
+    Console::LexError(yylineno, "Invalid numeric literal '" + string(yytext) + "'");
     lexerErrors++;
     return ERROR;
 }
@@ -442,11 +442,11 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     /* ?> и конец строки в комментарий не входят - возвращаем их во вход */
 <LINE_COMMENT>"?>"|\n {
     yyless(0);
-    Console::Log("Comment (line " + std::to_string(commentBuf.getStartLine()) + "): " + commentBuf.current());
+    Console::LexLog(commentBuf.getStartLine(), "Comment (line): " + commentBuf.current());
     yy_pop_state();
 }
 <LINE_COMMENT><<EOF>> {
-    Console::Log("Comment (line " + std::to_string(commentBuf.getStartLine()) + "): " + commentBuf.current());
+    Console::LexLog(commentBuf.getStartLine(), "Comment (line): " + commentBuf.current());
     yy_pop_state();
 }
 
@@ -459,12 +459,12 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     commentBuf.append(yytext);
 }
 <COMMENT>"*/" {
-    Console::Log("Comment (block, line " + std::to_string(commentBuf.getStartLine()) + "): " + commentBuf.current());
+    Console::LexLog(commentBuf.getStartLine(), "Comment (block): " + commentBuf.current());
     yy_pop_state();
 }
 <COMMENT><<EOF>> {
     BEGIN(INITIAL);
-    Console::Error("Unterminated block comment starting at line " + std::to_string(commentBuf.getStartLine()));
+    Console::LexError(commentBuf.getStartLine(), "Unterminated block comment");
     lexerErrors++;
     return ERROR;
 }
@@ -483,7 +483,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     stringBuf.append(yytext);
 }
 <STRING_S>\' {
-    Console::Log("String literal (line " + std::to_string(stringBuf.getStartLine()) + "): '" + stringBuf.current() + "'");
+    Console::LexLog(stringBuf.getStartLine(), "String literal: '" + stringBuf.current() + "'");
     yylval.str = new std::string(stringBuf.current());
     stringBuf.reset();
     yy_pop_state();
@@ -491,7 +491,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 }
 <STRING_S><<EOF>> {
     BEGIN(INITIAL);
-    Console::Error("Unterminated single-quoted string starting at line " + std::to_string(stringBuf.getStartLine()));
+    Console::LexError(stringBuf.getStartLine(), "Unterminated single-quoted string");
     lexerErrors++;
     return ERROR;
 }
@@ -500,19 +500,19 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     /* Строки в двойных кавычках: без вставок это один токен CONSTANT_STRING, со вставками -
        ( "фрагмент" . ( вставка ) . "фрагмент" ); пустой фрагмент в начале нужен, чтобы результат был строкой */
 \" {
-    Console::Log("StringStart (line " + std::to_string(yylineno) + ")");
+    Console::LexLog(yylineno, "StringStart");
     stringBuf.reset();
     stringBuf.setStartLine(yylineno);
     stringHasInterp.push_back(false);
     yy_push_state(STRING_D);
 }
 <STRING_D>\" {
-    Console::Log("StringEnd");
+    Console::LexLog(yylineno, "StringEnd");
     bool hasInterp = stringHasInterp.back();
     stringHasInterp.pop_back();
     yy_pop_state();
     if (!hasInterp) {
-        Console::Log("String literal (line " + std::to_string(stringBuf.getStartLine()) + "): \"" + stringBuf.current() + "\"");
+        Console::LexLog(stringBuf.getStartLine(), "String literal: \"" + stringBuf.current() + "\"");
         pushString(CONSTANT_STRING, stringBuf.current());
     } else {
         if (!stringBuf.current().empty()) {
@@ -562,7 +562,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 
     /* Простые вставки: $x, $x[...], $x->y, $x?->y -> . ( $x ), . ( $x [ ключ ] ), . ( $x -> y ) */
 <STRING_D>{DOLLAR_NAME}/"[" {
-    Console::Log("Variable: " + string(yytext));
+    Console::LexLog(yylineno, "Variable: " + string(yytext));
     startInterpolation(stringBuf);
     pushToken('$');
     pushString(ID, yytext + 1);
@@ -570,7 +570,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     return popPending();
 }
 <STRING_D>{DOLLAR_NAME}/"->"[A-Za-z_\x80-\xff] {
-    Console::Log("Variable: " + string(yytext));
+    Console::LexLog(yylineno, "Variable: " + string(yytext));
     startInterpolation(stringBuf);
     pushToken('$');
     pushString(ID, yytext + 1);
@@ -578,7 +578,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     return popPending();
 }
 <STRING_D>{DOLLAR_NAME}/"?->"[A-Za-z_\x80-\xff] {
-    Console::Log("Variable: " + string(yytext));
+    Console::LexLog(yylineno, "Variable: " + string(yytext));
     startInterpolation(stringBuf);
     pushToken('$');
     pushString(ID, yytext + 1);
@@ -586,7 +586,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     return popPending();
 }
 <STRING_D>{DOLLAR_NAME} {
-    Console::Log("Variable: " + string(yytext));
+    Console::LexLog(yylineno, "Variable: " + string(yytext));
     startInterpolation(stringBuf);
     pushToken('$');
     pushString(ID, yytext + 1);
@@ -595,39 +595,39 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 }
 
 <INTERP_INDEX>"[" {
-    Console::Log("Separator: [");
+    Console::LexLog(yylineno, "Separator: [");
     return '[';
 }
     /* "$a[key]": некавыченный ключ - это строка 'key', а не константа */
 <INTERP_INDEX>{LABEL} {
-    Console::Log("String key: " + string(yytext));
+    Console::LexLog(yylineno, "String key: " + string(yytext));
     yylval.str = new std::string(yytext);
     return CONSTANT_STRING;
 }
 <INTERP_INDEX>"-" {
-    Console::Log("Operator: -");
+    Console::LexLog(yylineno, "Operator: -");
     return '-';
 }
 <INTERP_INDEX>{INTEGER} {
     std::string int_str = stripUnderscores(yytext);
     if (isBigInteger(int_str, 10)) {
         // как в PHP: слишком большое число в "$a[...]" - это строковый ключ
-        Console::Log("String key: " + string(yytext));
+        Console::LexLog(yylineno, "String key: " + string(yytext));
         yylval.str = new std::string(yytext);
         return CONSTANT_STRING;
     }
     long long value = std::strtoll(int_str.c_str(), nullptr, 10);
-    Console::Log("Integer: " + std::to_string(value));
+    Console::LexLog(yylineno, "Integer: " + std::to_string(value));
     yylval.ival = value;
     return LNUMBER;
 }
 <INTERP_INDEX>{DOLLAR_NAME} {
-    Console::Log("Variable: " + string(yytext));
+    Console::LexLog(yylineno, "Variable: " + string(yytext));
     pushString(ID, yytext + 1);
     return '$';
 }
 <INTERP_INDEX>"]" {
-    Console::Log("Separator: ]");
+    Console::LexLog(yylineno, "Separator: ]");
     yy_pop_state();
     pushToken(']');
     pushToken(')');
@@ -635,21 +635,21 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 }
 <INTERP_INDEX>(.|\n) {
     BEGIN(INITIAL);
-    Console::Error("Unexpected symbol '" + string(yytext) + "' in string offset at line " + std::to_string(yylineno));
+    Console::LexError(yylineno, "Unexpected symbol '" + string(yytext) + "' in string offset");
     lexerErrors++;
     return ERROR;
 }
 
 <INTERP_PROP>"->" {
-    Console::Log("Operator: ->");
+    Console::LexLog(yylineno, "Operator: ->");
     return OBJECT_OPERATOR;
 }
 <INTERP_PROP>"?->" {
-    Console::Log("Operator: ?->");
+    Console::LexLog(yylineno, "Operator: ?->");
     return NULLSAFE_OBJECT_OPERATOR;
 }
 <INTERP_PROP>{LABEL} {
-    Console::Log("Identifier: " + string(yytext));
+    Console::LexLog(yylineno, "Identifier: " + string(yytext));
     yy_pop_state();
     pushString(ID, yytext);
     pushToken(')');
@@ -659,7 +659,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
     /* Сложные вставки: дальше читаем обычный PHP-код до парной } */
     /* {$expr} -> . ( $expr ) */
 <STRING_D>"{"/"$" {
-    Console::Log("InterpolationStart: {");
+    Console::LexLog(yylineno, "InterpolationStart: {");
     startInterpolation(stringBuf);
     interps.push_back({0, false});
     yy_push_state(IN_CURLY);
@@ -667,7 +667,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 }
     /* ${имя} и ${имя[...]} - это переменная $имя */
 <STRING_D>"${"{LABEL}/[\[}] {
-    Console::Log("InterpolationStart: ${");
+    Console::LexLog(yylineno, "InterpolationStart: ${");
     startInterpolation(stringBuf);
     pushToken('$');
     pushString(ID, yytext + 2);
@@ -677,7 +677,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 }
     /* ${выражение} - переменная-переменная: парсер видит '$' '{' выражение '}' */
 <STRING_D>"${" {
-    Console::Log("InterpolationStart: ${");
+    Console::LexLog(yylineno, "InterpolationStart: ${");
     startInterpolation(stringBuf);
     pushToken('$');
     pushToken('{');
@@ -688,13 +688,13 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 
 <STRING_D,INTERP_INDEX,INTERP_PROP><<EOF>> {
     BEGIN(INITIAL);
-    Console::Error("Unterminated double-quoted string at line " + std::to_string(yylineno));
+    Console::LexError(yylineno, "Unterminated double-quoted string");
     lexerErrors++;
     return ERROR;
 }
 <IN_CURLY><<EOF>> {
     BEGIN(INITIAL);
-    Console::Error("Unterminated {$...} interpolation at line " + std::to_string(yylineno));
+    Console::LexError(yylineno, "Unterminated {$...} interpolation");
     lexerErrors++;
     return ERROR;
 }
@@ -705,7 +705,7 @@ null            { Console::Log("Null: null"); return NULLPTR; }
 
 .   {
     BEGIN(INITIAL);
-    Console::Error("Unexpected symbol '" + string(yytext) + "' at line " + std::to_string(yylineno));
+    Console::LexError(yylineno, "Unexpected symbol '" + string(yytext) + "'");
     lexerErrors++;
     return ERROR;
 }
