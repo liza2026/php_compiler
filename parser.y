@@ -240,12 +240,6 @@ expr
     | THROW expr { Console::ParserLog("expr (THROW expr)"); }
     | NEW expr { Console::ParserLog("expr (NEW expr)"); }
     | expr INSTANCEOF expr { Console::ParserLog("expr (expr INSTANCEOF expr)"); }
-    | FUNCTION is_reference '(' parameter_list_e ')' return_type block { Console::ParserLog("expr (FUNCTION is_reference parameter_list_e return_type block)"); }
-    | FUNCTION is_reference '(' parameter_list_e ')' USE '(' lexical_var_list possible_comma ')' return_type block { Console::ParserLog("expr (FUNCTION is_reference parameter_list_e USE lexical_var_list return_type block)"); }
-    | STATIC FUNCTION is_reference '(' parameter_list_e ')' return_type block { Console::ParserLog("expr (STATIC FUNCTION is_reference parameter_list_e return_type block)"); }
-    | STATIC FUNCTION is_reference '(' parameter_list_e ')' USE '(' lexical_var_list possible_comma ')' return_type block { Console::ParserLog("expr (STATIC FUNCTION is_reference parameter_list_e USE lexical_var_list return_type block)"); }
-    | FN is_reference '(' parameter_list_e ')' return_type DOUBLE_ARROW expr %prec FN { Console::ParserLog("expr (FN is_reference parameter_list_e return_type DOUBLE_ARROW expr)"); }
-    | STATIC FN is_reference '(' parameter_list_e ')' return_type DOUBLE_ARROW expr %prec FN { Console::ParserLog("expr (STATIC FN is_reference parameter_list_e return_type DOUBLE_ARROW expr)"); }
     ;
 
 /* выражения через запятую: echo, заголовок for */
@@ -476,12 +470,6 @@ member_modifier
     | PROTECTED { Console::ParserLog("member_modifier (PROTECTED)"); }
     | PRIVATE { Console::ParserLog("member_modifier (PRIVATE)"); }
     | STATIC { Console::ParserLog("member_modifier (STATIC)"); }
-    ;
-
-/* захваченные переменные use ($a, &$b) */
-lexical_var_list
-    : is_reference '$' ID { Console::ParserLog("lexical_var_list (is_reference $ ID)"); }
-    | lexical_var_list ',' is_reference '$' ID { Console::ParserLog("lexical_var_list (lexical_var_list , is_reference $ ID)"); }
     ;
 
 /* необязательная запятая в конце списка */
