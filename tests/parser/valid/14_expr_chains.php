@@ -8,7 +8,6 @@ $x = new Foo(1, 2);
 $y = (new Foo)->bar;
 $z = new $cls($a);
 $f = $o?->m()?->p;
-$g = strlen(...);
 $h = &$arr[0];
 $i = $a & $b;
 ++$a[0];

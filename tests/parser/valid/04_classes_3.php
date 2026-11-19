@@ -1,6 +1,4 @@
-<?php // OK: интерфейсы, implements нескольких, abstract/final
-interface Speaks {}
-interface Moves {}
-abstract class Base {}
-final class Robot extends Base implements Speaks, Moves {
+<?php // OK: наследование (extends), пустые тела классов
+class Base {}
+class Robot extends Base {
 }
