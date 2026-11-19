@@ -8,7 +8,7 @@
 //   -v      - для упавших тестов показать последние строки вывода парсера
 //
 // valid   - PASS, если парсер завершился с кодом 0 и не сообщил об ошибке.
-// invalid - PASS, если была ошибка (код возврата не 0, "Syntax error" или "ERROR:" от лексера).
+// invalid - PASS, если была ошибка (код возврата не 0, [PARSER ERROR], [LEXER ERROR] или "ERROR:").
 //           Номер строки ошибки сверяется с эталоном PHP из первой строки теста "FAIL (line N, ...)".
 //           Тест с пометкой "compile" - ошибка уровня компиляции PHP: грамматически он разбирается,
 //           поэтому если парсер его принял, это не провал, а пометка COMPILE.
@@ -76,16 +76,19 @@ RunResult runParser(const fs::path& exe, const fs::path& file) {
 
 bool hasError(const RunResult& r) {
     return r.code != 0
-        || r.output.find("Syntax error") != std::string::npos
+        || r.output.find("[PARSER ERROR]") != std::string::npos
+        || r.output.find("[LEXER ERROR]") != std::string::npos
         || r.output.find("ERROR:") != std::string::npos;
 }
 
 // Номер строки ошибки из сообщения парсера или лексера, 0 - если не нашли
 int errorLine(const std::string& output) {
-    static const std::regex syntaxLine(R"(Syntax error at line (\d+))");
-    static const std::regex lexerLine(R"(ERROR:.*?line (\d+))");
+    // "[PARSER ERROR] Line 3: ..." и "[LEXER ERROR] Line 3: ..." - сообщения Console::ParserError / LexError,
+    // "ERROR: ... line 3" - общее Console::Error
+    static const std::regex logLine(R"(\[(?:PARSER|LEXER) ERROR\] Line (\d+))");
+    static const std::regex generalLine(R"(ERROR:.*?line (\d+))");
     std::smatch m;
-    if (std::regex_search(output, m, syntaxLine) || std::regex_search(output, m, lexerLine)) {
+    if (std::regex_search(output, m, logLine) || std::regex_search(output, m, generalLine)) {
         return std::stoi(m[1]);
     }
     return 0;
