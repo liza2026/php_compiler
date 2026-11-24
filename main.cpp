@@ -5,12 +5,14 @@
 #endif
 
 #include "core/helpers/Console.h"
+#include "core/nodes/TreePrinter.h"
 
 extern FILE* yyin;
 extern int yyparse();
 extern int yydebug;
 extern int lexerErrors;
 extern int parserErrors;
+extern std::vector<StmtNode*>* root;
 
 int main(int argc, char* argv[]) {
 
@@ -40,5 +42,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     printf("Parse OK\n");
+
+    /* синтаксическое дерево - в файл ast.dot рядом с запуском */
+    if (root && printTreeDot(root, "ast.dot")) {
+        printf("Syntax tree: ast.dot (picture: dot -Tsvg ast.dot -o ast.svg)\n");
+    }
     return 0;
 }

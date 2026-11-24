@@ -40,3 +40,6 @@ lex.yy.h
 .DS_Store
 Thumbs.db
 *.log
+# --- Синтаксическое дерево (вывод парсера) ---
+ast.dot
+ast.svg
