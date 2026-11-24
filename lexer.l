@@ -507,7 +507,6 @@ null            { Console::LexLog(yylineno, "Null: null"); return NULLPTR; }
     yy_push_state(STRING_D);
 }
 <STRING_D>\" {
-    Console::LexLog(yylineno, "StringEnd");
     bool hasInterp = stringHasInterp.back();
     stringHasInterp.pop_back();
     yy_pop_state();
@@ -521,6 +520,7 @@ null            { Console::LexLog(yylineno, "Null: null"); return NULLPTR; }
         }
         pushToken(')');
     }
+    Console::LexLog(yylineno, "StringEnd");
     stringBuf.reset();
     return popPending();
 }
