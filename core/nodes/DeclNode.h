@@ -7,7 +7,6 @@
 #include "StmtNode.h"
 #include "List.h"
 
-/* Модификаторы - битовые флаги, у члена класса их может быть несколько: public static */
 enum Modifier {
     NoModifier  = 0,
     ModPublic    = 1,

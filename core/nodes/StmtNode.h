@@ -9,8 +9,6 @@
 class FunctionNode;
 class ClassNode;
 
-/* Виды операторов. Какие поля заполнены у каждого вида - см. комментарии справа.
-   Альтернативный синтаксис (while (...): ... endwhile;) даёт те же узлы, тело - блок */
 enum StmtType {
     EmptyStmt,          // ;
     ExprStmt,           // expr

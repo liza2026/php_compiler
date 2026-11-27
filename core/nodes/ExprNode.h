@@ -5,7 +5,6 @@
 #include <vector>
 #include "List.h"
 
-/* Виды выражений. Какие поля заполнены у каждого вида - см. комментарии справа */
 enum ExprType {
     /* константы и имена */
     IntExpr,            // intValue
